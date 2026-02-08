@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { PieChart, Pie, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import dynamic from "next/dynamic";
-import { fixLeafletIcons } from "@/lib/leafletFix";
 
 // Dynamically import the map to disable SSR
 const CityMap = dynamic(() => import("./CityMap"), { ssr: false });
@@ -102,7 +101,12 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fixLeafletIcons();
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      import("@/lib/leafletFix").then(({ fixLeafletIcons }) => {
+        fixLeafletIcons();
+      });
+    }
   }, []);
 
   useEffect(() => {
