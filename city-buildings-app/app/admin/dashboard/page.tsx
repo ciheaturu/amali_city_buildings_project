@@ -18,7 +18,7 @@ import dynamic from "next/dynamic";
 const BuildingMap = dynamic(() => import("./BuildingMap"), { ssr: false });
 
 type Profile = { role: "city" | "admin"; city_id: string | null };
-type City = { id: string; name };
+type City = { id: string; name: string };
 type BuildingRow = {
   id: string;
   city_id: string;
