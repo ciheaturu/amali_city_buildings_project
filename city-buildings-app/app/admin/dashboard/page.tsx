@@ -309,11 +309,12 @@ export default function AdminDashboardPage() {
                   ...p,
                   latitude: p.latitude as number,
                   longitude: p.longitude as number,
-                }))}
-                fallbackCenter={summary.center}
-                fallbackZoom={5}
-                cityNameById={summary.cityNameById}
-              />
+                  occupants: p.occupants ?? undefined,
+                  }))}
+                  fallbackCenter={summary.center}
+                  fallbackZoom={5}
+                  cityNameById={summary.cityNameById}
+                />
             </div>
           </section>
         </div>
