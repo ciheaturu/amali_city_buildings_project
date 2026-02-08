@@ -20,7 +20,38 @@ type Building = {
 
 const PIE_COLORS = ["#38bdf8", "#22c55e", "#f97316", "#e11d48", "#a78bfa", "#facc15"];
 
-function Card(props: { title: string; value: string; subtitle?: string; accent?: string }) {
+// Styles
+const styles = {
+  navBtn: {
+    padding: "10px 16px",
+    borderRadius: 10,
+    background: "#111827",
+    color: "white",
+    border: "1px solid #1f2937",
+    fontWeight: 800,
+    cursor: "pointer",
+    transition: "all 0.2s",
+  } as React.CSSProperties,
+
+  btnGreen: {
+    padding: "10px 16px",
+    borderRadius: 10,
+    background: "#22c55e",
+    border: "none",
+    color: "#052e16",
+    fontWeight: 900,
+    cursor: "pointer",
+    transition: "all 0.2s",
+  } as React.CSSProperties,
+};
+
+// Card Component
+function Card({ title, value, subtitle, accent }: { 
+  title: string; 
+  value: string; 
+  subtitle?: string; 
+  accent?: string;
+}) {
   return (
     <div
       style={{
@@ -31,67 +62,55 @@ function Card(props: { title: string; value: string; subtitle?: string; accent?:
         boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
       }}
     >
-      <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600 }}>{props.title}</div>
+      <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, textTransform: "uppercase" }}>
+        {title}
+      </div>
       <div
         style={{
           fontSize: 28,
           fontWeight: 900,
           marginTop: 8,
-          color: props.accent ?? "#38bdf8",
+          color: accent ?? "#38bdf8",
         }}
       >
-        {props.value}
+        {value}
       </div>
-      {props.subtitle ? (
-        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 6 }}>{props.subtitle}</div>
-      ) : null}
+      {subtitle && (
+        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 6 }}>{subtitle}</div>
+      )}
     </div>
   );
 }
 
-function toCsv(rows: any[]) {
+// Utility Functions
+function toCsv(rows: any[]): string {
   if (rows.length === 0) return "";
+  
   const headers = Object.keys(rows[0]);
-
   const escape = (v: unknown) => {
     const s = (v ?? "").toString().replace(/"/g, '""');
     return `"${s}"`;
   };
 
-  const lines = [headers.join(","), ...rows.map((r) => headers.map((h) => escape(r[h])).join(","))];
-  return lines.join("\n");
+  const headerLine = headers.join(",");
+  const dataLines = rows.map((row) => 
+    headers.map((header) => escape(row[header])).join(",")
+  );
+
+  return [headerLine, ...dataLines].join("\n");
 }
 
-function downloadCsv(filename: string, csv: string) {
+function downloadCsv(filename: string, csv: string): void {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
   URL.revokeObjectURL(url);
 }
 
-const navBtn: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 10,
-  background: "#111827",
-  color: "white",
-  border: "1px solid #1f2937",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const btnGreen: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 10,
-  background: "#22c55e",
-  border: "none",
-  color: "#052e16",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
+// Main Component
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -100,158 +119,200 @@ export default function DashboardPage() {
   const [cityName, setCityName] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
+  // Fix Leaflet icons on client side only
   useEffect(() => {
-    // Only run on client side
-    if (typeof window !== 'undefined') {
-      import("@/lib/leafletFix").then(({ fixLeafletIcons }) => {
-        fixLeafletIcons();
-      });
+    if (typeof window !== "undefined") {
+      import("@/lib/leafletFix")
+        .then(({ fixLeafletIcons }) => {
+          fixLeafletIcons();
+        })
+        .catch((err) => {
+          console.error("Failed to load leaflet fix:", err);
+        });
     }
   }, []);
 
+  // Load data
   useEffect(() => {
-    async function load() {
+    async function loadData() {
       setLoading(true);
       setError(null);
 
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData.user;
+      try {
+        // Check authentication
+        const { data: userData } = await supabase.auth.getUser();
+        const user = userData.user;
 
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
+        if (!user) {
+          router.replace("/login");
+          return;
+        }
 
-      const { data: profile, error: profErr } = await supabase
-        .from("profiles")
-        .select("role, city_id")
-        .eq("user_id", user.id)
-        .single();
+        // Get user profile
+        const { data: profile, error: profErr } = await supabase
+          .from("profiles")
+          .select("role, city_id")
+          .eq("user_id", user.id)
+          .single();
 
-      if (profErr) {
+        if (profErr) throw profErr;
+
+        // Redirect admins to admin dashboard
+        if (profile?.role === "admin") {
+          router.replace("/admin/dashboard");
+          return;
+        }
+
+        // Validate city assignment
+        if (!profile?.city_id) {
+          setError("Your profile has no city assigned.");
+          setLoading(false);
+          return;
+        }
+
+        // Get city name
+        const { data: cityRow, error: cityErr } = await supabase
+          .from("cities")
+          .select("name")
+          .eq("id", profile.city_id)
+          .single();
+
+        setCityName(cityErr ? "" : cityRow?.name ?? "");
+
+        // Get buildings
+        const { data: buildings, error: bErr } = await supabase
+          .from("buildings")
+          .select("id, building_name, classification, occupants, latitude, longitude");
+
+        if (bErr) throw bErr;
+
+        setRows((buildings ?? []) as Building[]);
+      } catch (err: any) {
+        setError(err.message || "An error occurred while loading data");
+      } finally {
         setLoading(false);
-        setError(profErr.message);
-        return;
       }
-
-      if (profile?.role === "admin") {
-        router.replace("/admin/dashboard");
-        return;
-      }
-
-      if (!profile?.city_id) {
-        setLoading(false);
-        setError("Your profile has no city id.");
-        return;
-      }
-
-      const { data: cityRow, error: cityErr } = await supabase
-        .from("cities")
-        .select("name")
-        .eq("id", profile.city_id)
-        .single();
-
-      if (cityErr) setCityName("");
-      else setCityName(cityRow?.name ?? "");
-
-      const { data: buildings, error: bErr } = await supabase
-        .from("buildings")
-        .select("id, building_name, classification, occupants, latitude, longitude");
-
-      if (bErr) {
-        setLoading(false);
-        setError(bErr.message);
-        return;
-      }
-
-      setRows((buildings ?? []) as Building[]);
-      setLoading(false);
     }
 
-    load();
+    loadData();
   }, [router]);
 
+  // Calculate totals and analytics
   const totals = useMemo(() => {
     const totalBuildings = rows.length;
-    const totalOccupants = rows.reduce((s, r) => s + (r.occupants ?? 0), 0);
+    const totalOccupants = rows.reduce((sum, row) => sum + (row.occupants ?? 0), 0);
     const avgOccupants = totalBuildings ? totalOccupants / totalBuildings : 0;
-
     const missingCoords = rows.filter((r) => r.latitude == null || r.longitude == null).length;
 
+    // Group by classification
     const byClass: Record<string, number> = {};
-    rows.forEach((r) => {
-      byClass[r.classification] = (byClass[r.classification] ?? 0) + 1;
+    rows.forEach((row) => {
+      byClass[row.classification] = (byClass[row.classification] ?? 0) + 1;
     });
 
     const chart = Object.entries(byClass).map(([name, value]) => ({ name, value }));
 
+    // Filter valid coordinates
     const points = rows
       .filter((r) => r.latitude != null && r.longitude != null)
-      .map((r) => ({ ...r, latitude: r.latitude as number, longitude: r.longitude as number }));
+      .map((r) => ({ 
+        ...r, 
+        latitude: r.latitude as number, 
+        longitude: r.longitude as number 
+      }));
 
-    let center: [number, number] = [-26.2041, 28.0473];
+    // Calculate map center
+    let center: [number, number] = [-26.2041, 28.0473]; // Default to Johannesburg
     if (points.length > 0) {
-      const latAvg = points.reduce((s, p) => s + p.latitude, 0) / points.length;
-      const lonAvg = points.reduce((s, p) => s + p.longitude, 0) / points.length;
+      const latAvg = points.reduce((sum, p) => sum + p.latitude, 0) / points.length;
+      const lonAvg = points.reduce((sum, p) => sum + p.longitude, 0) / points.length;
       center = [latAvg, lonAvg];
     }
 
-    return { totalBuildings, totalOccupants, avgOccupants, missingCoords, chart, points, center };
+    return { 
+      totalBuildings, 
+      totalOccupants, 
+      avgOccupants, 
+      missingCoords, 
+      chart, 
+      points, 
+      center 
+    };
   }, [rows]);
 
-  async function exportCsv() {
+  // Export to CSV
+  async function handleExportCsv() {
     setError(null);
 
-    const { data, error } = await supabase
-      .from("buildings")
-      .select(
-        "id, building_name, street_address, latitude, longitude, classification, occupants, photo_url, created_at, updated_at"
-      );
+    try {
+      const { data, error } = await supabase
+        .from("buildings")
+        .select(
+          "id, building_name, street_address, latitude, longitude, classification, occupants, photo_url, created_at, updated_at"
+        );
 
-    if (error) {
-      setError(error.message);
-      return;
+      if (error) throw error;
+
+      const filename = cityName
+        ? `${cityName.toLowerCase().replace(/\s+/g, "_")}_buildings.csv`
+        : "city_buildings.csv";
+
+      downloadCsv(filename, toCsv(data ?? []));
+    } catch (err: any) {
+      setError(err.message || "Failed to export CSV");
     }
-
-    const filename = cityName
-      ? `${cityName.toLowerCase().replace(/\s+/g, "_")}_buildings.csv`
-      : "city_buildings.csv";
-
-    downloadCsv(filename, toCsv(data ?? []));
   }
 
-  async function signOut() {
+  // Sign out
+  async function handleSignOut() {
     await supabase.auth.signOut();
     router.replace("/login");
   }
 
+  // Loading state
   if (loading) {
     return (
-      <main style={{ background: "#020617", minHeight: "100vh", color: "white", padding: 24 }}>
-        Loading...
+      <main 
+        style={{ 
+          background: "#020617", 
+          minHeight: "100vh", 
+          color: "white", 
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 18,
+          fontWeight: 600
+        }}
+      >
+        Loading dashboard...
       </main>
     );
   }
 
+  // Main render
   return (
     <main style={{ background: "#020617", minHeight: "100vh", color: "white" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: 24 }}>
+        {/* Header */}
         <div
           style={{
             borderRadius: 16,
             padding: 20,
-            background: "linear-gradient(135deg,#1d4ed8,#0ea5e9)",
+            background: "linear-gradient(135deg, #1d4ed8, #0ea5e9)",
             marginBottom: 18,
           }}
         >
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>
-            {cityName ? `${cityName} dashboard` : "City dashboard"}
+            {cityName ? `${cityName} Dashboard` : "City Dashboard"}
           </h1>
-          <p style={{ opacity: 0.85, marginTop: 6 }}>Buildings, occupants and spatial coverage overview</p>
+          <p style={{ opacity: 0.85, marginTop: 6, margin: 0 }}>
+            Buildings, occupants and spatial coverage overview
+          </p>
 
+          {/* Navigation */}
           <div
             style={{
-              marginTop: 12,
+              marginTop: 16,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -260,81 +321,142 @@ export default function DashboardPage() {
             }}
           >
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => router.push("/app")} style={navBtn}>
+              <button onClick={() => router.push("/app")} style={styles.navBtn}>
                 Home
               </button>
-
-              <button onClick={() => router.push("/app/buildings")} style={navBtn}>
+              <button onClick={() => router.push("/app/buildings")} style={styles.navBtn}>
                 Buildings
               </button>
-
-              <button onClick={() => router.push("/app/buildings/new")} style={btnGreen}>
-                Add new building
+              <button onClick={() => router.push("/app/buildings/new")} style={styles.btnGreen}>
+                + Add Building
               </button>
-
-              <button onClick={exportCsv} style={navBtn}>
+              <button onClick={handleExportCsv} style={styles.navBtn}>
                 Export CSV
               </button>
             </div>
 
-            <button onClick={signOut} style={navBtn}>
-              Sign out
+            <button onClick={handleSignOut} style={styles.navBtn}>
+              Sign Out
             </button>
           </div>
         </div>
 
-        {error ? <p style={{ marginTop: 8, color: "#fca5a5" }}>{error}</p> : null}
+        {/* Error message */}
+        {error && (
+          <div 
+            style={{ 
+              marginBottom: 16, 
+              padding: 12, 
+              background: "#7f1d1d",
+              border: "1px solid #991b1b",
+              borderRadius: 8,
+              color: "#fca5a5" 
+            }}
+          >
+            {error}
+          </div>
+        )}
 
+        {/* Stats Cards */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4,1fr)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
             gap: 14,
             marginBottom: 18,
           }}
         >
-          <Card title="Total buildings" value={`${totals.totalBuildings}`} accent="#38bdf8" />
-          <Card title="Total occupants" value={`${totals.totalOccupants.toLocaleString()}`} accent="#22c55e" />
-          <Card title="Average occupants" value={`${totals.avgOccupants.toFixed(1)}`} accent="#f97316" />
-          <Card title="Missing coordinates" value={`${totals.missingCoords}`} accent="#a78bfa" />
+          <Card 
+            title="Total Buildings" 
+            value={`${totals.totalBuildings}`} 
+            accent="#38bdf8" 
+          />
+          <Card 
+            title="Total Occupants" 
+            value={totals.totalOccupants.toLocaleString()} 
+            accent="#22c55e" 
+          />
+          <Card 
+            title="Avg Occupants" 
+            value={totals.avgOccupants.toFixed(1)} 
+            accent="#f97316" 
+          />
+          <Card 
+            title="Missing Coords" 
+            value={`${totals.missingCoords}`} 
+            accent="#a78bfa" 
+          />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        {/* Charts */}
+        <div 
+          style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", 
+            gap: 14 
+          }}
+        >
+          {/* Pie Chart */}
           <section
             style={{
               borderRadius: 14,
-              background: "#020617",
+              background: "#111827",
               border: "1px solid #1f2937",
-              padding: 14,
+              padding: 16,
             }}
           >
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Buildings by classification</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 12 }}>
+              Buildings by Classification
+            </h2>
 
-            <div style={{ height: 320, marginTop: 10 }}>
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie dataKey="value" data={totals.chart} label stroke="#020617">
-                    {totals.chart.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+            <div style={{ height: 320 }}>
+              {totals.chart.length > 0 ? (
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie 
+                      dataKey="value" 
+                      data={totals.chart} 
+                      label 
+                      stroke="#111827"
+                    >
+                      {totals.chart.map((_, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={PIE_COLORS[index % PIE_COLORS.length]} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  height: "100%",
+                  color: "#6b7280"
+                }}>
+                  No classification data available
+                </div>
+              )}
             </div>
           </section>
 
+          {/* Map */}
           <section
             style={{
               borderRadius: 14,
-              background: "#020617",
+              background: "#111827",
               border: "1px solid #1f2937",
               overflow: "hidden",
             }}
           >
             <div style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Building locations</h2>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
+                Building Locations
+              </h2>
             </div>
 
             <div style={{ height: 340 }}>
