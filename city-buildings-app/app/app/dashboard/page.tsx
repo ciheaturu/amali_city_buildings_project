@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { PieChart, Pie, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
+import dynamic from "next/dynamic";
 import { fixLeafletIcons } from "@/lib/leafletFix";
+
+// Dynamically import the map to disable SSR
+const CityMap = dynamic(() => import("./CityMap"), { ssr: false });
 
 type Building = {
   id: string;
@@ -90,19 +92,6 @@ const btnGreen: React.CSSProperties = {
   fontWeight: 900,
   cursor: "pointer",
 };
-
-function FitBounds({ points }: { points: { latitude: number; longitude: number }[] }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!points || points.length === 0) return;
-
-    const bounds = L.latLngBounds(points.map((p) => [p.latitude, p.longitude] as [number, number]));
-    map.fitBounds(bounds, { padding: [40, 40] });
-  }, [points, map]);
-
-  return null;
-}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -345,24 +334,7 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ height: 340 }}>
-              <MapContainer center={totals.center} zoom={12} style={{ height: "100%", width: "100%" }}>
-                <FitBounds points={totals.points.map((p) => ({ latitude: p.latitude, longitude: p.longitude }))} />
-
-                <TileLayer
-                  attribution="&copy; OpenStreetMap contributors"
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-
-                {totals.points.map((b) => (
-                  <Marker key={b.id} position={[b.latitude, b.longitude]}>
-                    <Popup>
-                      <strong>{b.building_name}</strong>
-                      <div>{b.classification}</div>
-                      {b.occupants != null ? <div>Occupants: {b.occupants}</div> : null}
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
+              <CityMap points={totals.points} center={totals.center} />
             </div>
           </section>
         </div>
