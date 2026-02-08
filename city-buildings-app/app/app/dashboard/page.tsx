@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 // Dynamically import the map to disable SSR
 const CityMap = dynamic(() => import("./CityMap"), { ssr: false });
 
+// Types
 type Building = {
   id: string;
   building_name: string;
@@ -18,6 +19,17 @@ type Building = {
   longitude: number | null;
 };
 
+type DashboardTotals = {
+  totalBuildings: number;
+  totalOccupants: number;
+  avgOccupants: number;
+  missingCoords: number;
+  chart: Array<{ name: string; value: number }>;
+  points: Array<Building & { latitude: number; longitude: number }>;
+  center: [number, number];
+};
+
+// Constants
 const PIE_COLORS = ["#38bdf8", "#22c55e", "#f97316", "#e11d48", "#a78bfa", "#facc15"];
 
 // Styles
@@ -43,13 +55,29 @@ const styles = {
     cursor: "pointer",
     transition: "all 0.2s",
   } as React.CSSProperties,
+
+  btnRed: {
+    padding: "10px 16px",
+    borderRadius: 10,
+    background: "#dc2626",
+    border: "none",
+    color: "white",
+    fontWeight: 800,
+    cursor: "pointer",
+    transition: "all 0.2s",
+  } as React.CSSProperties,
 };
 
 // Card Component
-function Card({ title, value, subtitle, accent }: { 
-  title: string; 
-  value: string; 
-  subtitle?: string; 
+function StatCard({
+  title,
+  value,
+  subtitle,
+  accent = "#38bdf8",
+}: {
+  title: string;
+  value: string;
+  subtitle?: string;
   accent?: string;
 }) {
   return (
@@ -60,17 +88,26 @@ function Card({ title, value, subtitle, accent }: {
         background: "#111827",
         border: "1px solid #1f2937",
         boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+        transition: "transform 0.2s",
       }}
     >
-      <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, textTransform: "uppercase" }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: "#9ca3af",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
         {title}
       </div>
       <div
         style={{
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: 900,
           marginTop: 8,
-          color: accent ?? "#38bdf8",
+          color: accent,
         }}
       >
         {value}
@@ -85,36 +122,37 @@ function Card({ title, value, subtitle, accent }: {
 // Utility Functions
 function toCsv(rows: any[]): string {
   if (rows.length === 0) return "";
-  
+
   const headers = Object.keys(rows[0]);
-  const escape = (v: unknown) => {
-    const s = (v ?? "").toString().replace(/"/g, '""');
-    return `"${s}"`;
+  const escape = (value: unknown): string => {
+    const stringValue = (value ?? "").toString().replace(/"/g, '""');
+    return `"${stringValue}"`;
   };
 
   const headerLine = headers.join(",");
-  const dataLines = rows.map((row) => 
-    headers.map((header) => escape(row[header])).join(",")
-  );
+  const dataLines = rows.map((row) => headers.map((header) => escape(row[header])).join(","));
 
   return [headerLine, ...dataLines].join("\n");
 }
 
-function downloadCsv(filename: string, csv: string): void {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+function downloadCsv(filename: string, csvContent: string): void {
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
 
-// Main Component
+// Main Dashboard Component
 export default function DashboardPage() {
   const router = useRouter();
 
-  const [rows, setRows] = useState<Building[]>([]);
+  // State
+  const [buildings, setBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState(true);
   const [cityName, setCityName] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -132,115 +170,124 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Load data
+  // Load dashboard data
   useEffect(() => {
-    async function loadData() {
+    async function loadDashboardData() {
       setLoading(true);
       setError(null);
 
       try {
-        // Check authentication
-        const { data: userData } = await supabase.auth.getUser();
-        const user = userData.user;
+        // 1. Check authentication
+        const { data: userData, error: authError } = await supabase.auth.getUser();
 
-        if (!user) {
+        if (authError || !userData.user) {
           router.replace("/login");
           return;
         }
 
-        // Get user profile
-        const { data: profile, error: profErr } = await supabase
+        // 2. Get user profile
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("role, city_id")
-          .eq("user_id", user.id)
+          .eq("user_id", userData.user.id)
           .single();
 
-        if (profErr) throw profErr;
+        if (profileError) throw profileError;
 
-        // Redirect admins to admin dashboard
+        // 3. Redirect admins to admin dashboard
         if (profile?.role === "admin") {
           router.replace("/admin/dashboard");
           return;
         }
 
-        // Validate city assignment
+        // 4. Validate city assignment
         if (!profile?.city_id) {
-          setError("Your profile has no city assigned.");
+          setError("Your profile is not assigned to a city. Please contact an administrator.");
           setLoading(false);
           return;
         }
 
-        // Get city name
-        const { data: cityRow, error: cityErr } = await supabase
+        // 5. Get city information
+        const { data: cityData, error: cityError } = await supabase
           .from("cities")
           .select("name")
           .eq("id", profile.city_id)
           .single();
 
-        setCityName(cityErr ? "" : cityRow?.name ?? "");
+        if (!cityError && cityData) {
+          setCityName(cityData.name);
+        }
 
-        // Get buildings
-        const { data: buildings, error: bErr } = await supabase
+        // 6. Get all buildings
+        const { data: buildingsData, error: buildingsError } = await supabase
           .from("buildings")
-          .select("id, building_name, classification, occupants, latitude, longitude");
+          .select("id, building_name, classification, occupants, latitude, longitude")
+          .order("building_name", { ascending: true });
 
-        if (bErr) throw bErr;
+        if (buildingsError) throw buildingsError;
 
-        setRows((buildings ?? []) as Building[]);
+        setBuildings((buildingsData ?? []) as Building[]);
       } catch (err: any) {
-        setError(err.message || "An error occurred while loading data");
+        console.error("Dashboard load error:", err);
+        setError(err.message || "An error occurred while loading dashboard data");
       } finally {
         setLoading(false);
       }
     }
 
-    loadData();
+    loadDashboardData();
   }, [router]);
 
-  // Calculate totals and analytics
-  const totals = useMemo(() => {
-    const totalBuildings = rows.length;
-    const totalOccupants = rows.reduce((sum, row) => sum + (row.occupants ?? 0), 0);
-    const avgOccupants = totalBuildings ? totalOccupants / totalBuildings : 0;
-    const missingCoords = rows.filter((r) => r.latitude == null || r.longitude == null).length;
+  // Calculate dashboard analytics
+  const analytics = useMemo((): DashboardTotals => {
+    const totalBuildings = buildings.length;
+    const totalOccupants = buildings.reduce((sum, building) => sum + (building.occupants ?? 0), 0);
+    const avgOccupants = totalBuildings > 0 ? totalOccupants / totalBuildings : 0;
+    const missingCoords = buildings.filter(
+      (building) => building.latitude == null || building.longitude == null
+    ).length;
 
-    // Group by classification
-    const byClass: Record<string, number> = {};
-    rows.forEach((row) => {
-      byClass[row.classification] = (byClass[row.classification] ?? 0) + 1;
+    // Group buildings by classification
+    const classificationCounts: Record<string, number> = {};
+    buildings.forEach((building) => {
+      const classification = building.classification || "Unclassified";
+      classificationCounts[classification] = (classificationCounts[classification] ?? 0) + 1;
     });
 
-    const chart = Object.entries(byClass).map(([name, value]) => ({ name, value }));
+    const chartData = Object.entries(classificationCounts).map(([name, value]) => ({
+      name,
+      value,
+    }));
 
-    // Filter valid coordinates
-    const points = rows
-      .filter((r) => r.latitude != null && r.longitude != null)
-      .map((r) => ({ 
-        ...r, 
-        latitude: r.latitude as number, 
-        longitude: r.longitude as number 
+    // Filter buildings with valid coordinates
+    const validPoints = buildings
+      .filter((building) => building.latitude != null && building.longitude != null)
+      .map((building) => ({
+        ...building,
+        latitude: building.latitude as number,
+        longitude: building.longitude as number,
       }));
 
-    // Calculate map center
-    let center: [number, number] = [-26.2041, 28.0473]; // Default to Johannesburg
-    if (points.length > 0) {
-      const latAvg = points.reduce((sum, p) => sum + p.latitude, 0) / points.length;
-      const lonAvg = points.reduce((sum, p) => sum + p.longitude, 0) / points.length;
-      center = [latAvg, lonAvg];
+    // Calculate map center (default to Johannesburg)
+    let mapCenter: [number, number] = [-26.2041, 28.0473];
+    if (validPoints.length > 0) {
+      const avgLat = validPoints.reduce((sum, point) => sum + point.latitude, 0) / validPoints.length;
+      const avgLon = validPoints.reduce((sum, point) => sum + point.longitude, 0) / validPoints.length;
+      mapCenter = [avgLat, avgLon];
     }
 
-    return { 
-      totalBuildings, 
-      totalOccupants, 
-      avgOccupants, 
-      missingCoords, 
-      chart, 
-      points, 
-      center 
+    return {
+      totalBuildings,
+      totalOccupants,
+      avgOccupants,
+      missingCoords,
+      chart: chartData,
+      points: validPoints,
+      center: mapCenter,
     };
-  }, [rows]);
+  }, [buildings]);
 
-  // Export to CSV
+  // Export buildings to CSV
   async function handleExportCsv() {
     setError(null);
 
@@ -249,42 +296,77 @@ export default function DashboardPage() {
         .from("buildings")
         .select(
           "id, building_name, street_address, latitude, longitude, classification, occupants, photo_url, created_at, updated_at"
-        );
+        )
+        .order("building_name", { ascending: true });
 
       if (error) throw error;
 
-      const filename = cityName
-        ? `${cityName.toLowerCase().replace(/\s+/g, "_")}_buildings.csv`
-        : "city_buildings.csv";
+      if (!data || data.length === 0) {
+        setError("No buildings to export");
+        return;
+      }
 
-      downloadCsv(filename, toCsv(data ?? []));
+      const filename = cityName
+        ? `${cityName.toLowerCase().replace(/\s+/g, "_")}_buildings_${new Date().toISOString().split("T")[0]}.csv`
+        : `city_buildings_${new Date().toISOString().split("T")[0]}.csv`;
+
+      downloadCsv(filename, toCsv(data));
     } catch (err: any) {
+      console.error("Export error:", err);
       setError(err.message || "Failed to export CSV");
     }
   }
 
-  // Sign out
+  // Sign out handler
   async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.replace("/login");
+    try {
+      await supabase.auth.signOut();
+      router.replace("/login");
+    } catch (err: any) {
+      console.error("Sign out error:", err);
+      setError("Failed to sign out");
+    }
   }
 
   // Loading state
   if (loading) {
     return (
-      <main 
-        style={{ 
-          background: "#020617", 
-          minHeight: "100vh", 
-          color: "white", 
+      <main
+        style={{
+          background: "#020617",
+          minHeight: "100vh",
+          color: "white",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 18,
-          fontWeight: 600
         }}
       >
-        Loading dashboard...
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              border: "4px solid #1f2937",
+              borderTop: "4px solid #38bdf8",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 16px",
+            }}
+          />
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#9ca3af" }}>
+            Loading dashboard...
+          </div>
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
       </main>
     );
   }
@@ -292,178 +374,228 @@ export default function DashboardPage() {
   // Main render
   return (
     <main style={{ background: "#020617", minHeight: "100vh", color: "white" }}>
-      <div style={{ maxWidth: 1180, margin: "0 auto", padding: 24 }}>
-        {/* Header */}
-        <div
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: 24 }}>
+        {/* Header Section */}
+        <header
           style={{
             borderRadius: 16,
-            padding: 20,
+            padding: 24,
             background: "linear-gradient(135deg, #1d4ed8, #0ea5e9)",
-            marginBottom: 18,
+            marginBottom: 24,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
           }}
         >
-          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>
+          <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, marginBottom: 8 }}>
             {cityName ? `${cityName} Dashboard` : "City Dashboard"}
           </h1>
-          <p style={{ opacity: 0.85, marginTop: 6, margin: 0 }}>
+          <p style={{ opacity: 0.9, margin: 0, fontSize: 16 }}>
             Buildings, occupants and spatial coverage overview
           </p>
 
-          {/* Navigation */}
-          <div
+          {/* Navigation Buttons */}
+          <nav
             style={{
-              marginTop: 16,
+              marginTop: 20,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
               flexWrap: "wrap",
-              gap: 10,
+              gap: 12,
             }}
           >
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button onClick={() => router.push("/app")} style={styles.navBtn}>
-                Home
+                🏠 Home
               </button>
               <button onClick={() => router.push("/app/buildings")} style={styles.navBtn}>
-                Buildings
+                🏢 Buildings
               </button>
               <button onClick={() => router.push("/app/buildings/new")} style={styles.btnGreen}>
-                + Add Building
+                ➕ Add Building
               </button>
               <button onClick={handleExportCsv} style={styles.navBtn}>
-                Export CSV
+                📊 Export CSV
               </button>
             </div>
 
-            <button onClick={handleSignOut} style={styles.navBtn}>
-              Sign Out
+            <button onClick={handleSignOut} style={styles.btnRed}>
+              🚪 Sign Out
             </button>
-          </div>
-        </div>
+          </nav>
+        </header>
 
-        {/* Error message */}
+        {/* Error Message */}
         {error && (
-          <div 
-            style={{ 
-              marginBottom: 16, 
-              padding: 12, 
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 16,
               background: "#7f1d1d",
               border: "1px solid #991b1b",
-              borderRadius: 8,
-              color: "#fca5a5" 
+              borderRadius: 12,
+              color: "#fca5a5",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
             }}
           >
-            {error}
+            <span style={{ fontSize: 20 }}>⚠️</span>
+            <span style={{ flex: 1 }}>{error}</span>
+            <button
+              onClick={() => setError(null)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#fca5a5",
+                cursor: "pointer",
+                fontSize: 20,
+              }}
+            >
+              ✕
+            </button>
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div
+        {/* Statistics Cards */}
+        <section
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-            gap: 14,
-            marginBottom: 18,
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 16,
+            marginBottom: 24,
           }}
         >
-          <Card 
-            title="Total Buildings" 
-            value={`${totals.totalBuildings}`} 
-            accent="#38bdf8" 
+          <StatCard
+            title="Total Buildings"
+            value={analytics.totalBuildings.toString()}
+            accent="#38bdf8"
           />
-          <Card 
-            title="Total Occupants" 
-            value={totals.totalOccupants.toLocaleString()} 
-            accent="#22c55e" 
+          <StatCard
+            title="Total Occupants"
+            value={analytics.totalOccupants.toLocaleString()}
+            accent="#22c55e"
           />
-          <Card 
-            title="Avg Occupants" 
-            value={totals.avgOccupants.toFixed(1)} 
-            accent="#f97316" 
+          <StatCard
+            title="Avg Occupants"
+            value={analytics.avgOccupants.toFixed(1)}
+            accent="#f97316"
           />
-          <Card 
-            title="Missing Coords" 
-            value={`${totals.missingCoords}`} 
-            accent="#a78bfa" 
+          <StatCard
+            title="Missing Coords"
+            value={analytics.missingCoords.toString()}
+            accent="#a78bfa"
+            subtitle={
+              analytics.missingCoords > 0
+                ? `${((analytics.missingCoords / analytics.totalBuildings) * 100).toFixed(1)}% of total`
+                : "All buildings mapped"
+            }
           />
-        </div>
+        </section>
 
-        {/* Charts */}
-        <div 
-          style={{ 
-            display: "grid", 
-            gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", 
-            gap: 14 
+        {/* Charts Section */}
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(450px, 1fr))",
+            gap: 16,
           }}
         >
-          {/* Pie Chart */}
-          <section
+          {/* Pie Chart - Classification */}
+          <div
             style={{
               borderRadius: 14,
               background: "#111827",
               border: "1px solid #1f2937",
-              padding: 16,
+              padding: 20,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
             }}
           >
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 12 }}>
-              Buildings by Classification
+            <h2
+              style={{
+                margin: 0,
+                marginBottom: 16,
+                fontSize: 18,
+                fontWeight: 800,
+                color: "#f3f4f6",
+              }}
+            >
+              📊 Buildings by Classification
             </h2>
 
-            <div style={{ height: 320 }}>
-              {totals.chart.length > 0 ? (
-                <ResponsiveContainer>
+            <div style={{ height: 340 }}>
+              {analytics.chart.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie 
-                      dataKey="value" 
-                      data={totals.chart} 
-                      label 
+                    <Pie
+                      dataKey="value"
+                      data={analytics.chart}
+                      label={(entry) => `${entry.name}: ${entry.value}`}
                       stroke="#111827"
+                      strokeWidth={2}
                     >
-                      {totals.chart.map((_, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={PIE_COLORS[index % PIE_COLORS.length]} 
+                      {analytics.chart.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
                         />
                       ))}
                     </Pie>
-                    <Tooltip />
-                    <Legend />
+                    <Tooltip
+                      contentStyle={{
+                        background: "#1f2937",
+                        border: "1px solid #374151",
+                        borderRadius: 8,
+                        color: "white",
+                      }}
+                    />
+                    <Legend
+                      wrapperStyle={{
+                        paddingTop: 10,
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "center", 
-                  height: "100%",
-                  color: "#6b7280"
-                }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    color: "#6b7280",
+                    fontSize: 16,
+                  }}
+                >
                   No classification data available
                 </div>
               )}
             </div>
-          </section>
+          </div>
 
-          {/* Map */}
-          <section
+          {/* Map - Building Locations */}
+          <div
             style={{
               borderRadius: 14,
               background: "#111827",
               border: "1px solid #1f2937",
               overflow: "hidden",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
             }}
           >
-            <div style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
-                Building Locations
+            <div style={{ padding: 16, borderBottom: "1px solid #1f2937" }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#f3f4f6" }}>
+                🗺️ Building Locations
               </h2>
+              <p style={{ margin: 0, marginTop: 4, fontSize: 14, color: "#9ca3af" }}>
+                {analytics.points.length} buildings mapped
+              </p>
             </div>
 
-            <div style={{ height: 340 }}>
-              <CityMap points={totals.points} center={totals.center} />
+            <div style={{ height: 380 }}>
+              <CityMap points={analytics.points} center={analytics.center} />
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </main>
   );
