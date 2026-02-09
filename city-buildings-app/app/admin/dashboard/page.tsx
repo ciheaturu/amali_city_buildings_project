@@ -517,7 +517,7 @@ export default function AdminDashboardPage() {
                   <YAxis tick={{ fill: "#e5e7eb", fontSize: 12 }} />
                   <Tooltip 
                     contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }}
-                    formatter={(value: any, name?: string) => {
+                    formatter={(value: any, name: string) => {
                       if (name === "percentage") return `${value.toFixed(1)}%`;
                       return value;
                     }}

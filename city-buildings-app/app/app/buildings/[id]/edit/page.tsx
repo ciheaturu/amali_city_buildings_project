@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
-type City = { id: string; name: string };
 
 const CLASS_OPTIONS = ["residential", "commercial", "public", "industrial", "mixed-use"] as const;
 const CONDITION_OPTIONS = ["Excellent", "Good", "Fair", "Poor", "Dilapidated", "Under Construction"] as const;
@@ -38,12 +36,23 @@ const btnPrimary: React.CSSProperties = {
   cursor: "pointer",
 };
 
-export default function AdminNewBuildingPage() {
-  const router = useRouter();
+const btnRed: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 10,
+  background: "#dc2626",
+  border: "none",
+  color: "white",
+  fontWeight: 900,
+  cursor: "pointer",
+};
 
-  const [cities, setCities] = useState<City[]>([]);
-  const [cityId, setCityId] = useState("");
+export default function EditBuildingPage() {
+  const router = useRouter();
+  const params = useParams();
+  const buildingId = params?.id as string;
+
   const [cityName, setCityName] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   // Basic fields
   const [buildingName, setBuildingName] = useState("");
@@ -66,11 +75,11 @@ export default function AdminNewBuildingPage() {
   const [floorAreaSqm, setFloorAreaSqm] = useState<string>("");
 
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Address suggestions state
+  // Address suggestions
   const [addrQuery, setAddrQuery] = useState("");
   const [addrLoading, setAddrLoading] = useState(false);
   const [addrError, setAddrError] = useState<string | null>(null);
@@ -81,59 +90,95 @@ export default function AdminNewBuildingPage() {
   const addrAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    async function init() {
+    async function loadBuilding() {
       setLoading(true);
       setError(null);
 
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        router.replace("/login");
+      if (!buildingId) {
+        setError("No building ID provided");
+        setLoading(false);
         return;
       }
 
-      const { data: profile, error: pErr } = await supabase
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const { data: profile, error: profErr } = await supabase
         .from("profiles")
-        .select("role")
-        .eq("user_id", userData.user.id)
+        .select("role, city_id")
+        .eq("user_id", user.id)
         .single();
 
-      if (pErr || profile?.role !== "admin") {
-        router.replace("/app");
-        return;
-      }
-
-      const { data: cityRows, error: cityErr } = await supabase
-        .from("cities")
-        .select("id, name")
-        .order("name", { ascending: true });
-
-      if (cityErr) {
+      if (profErr) {
+        setError(profErr.message);
         setLoading(false);
-        setError(cityErr.message);
         return;
       }
 
-      const list = (cityRows ?? []) as City[];
-      setCities(list);
+      if (profile?.role !== "city") {
+        router.push("/admin");
+        return;
+      }
 
-      const firstId = list[0]?.id ?? "";
-      setCityId((prev) => prev || firstId);
+      if (profile?.city_id) {
+        const { data: city } = await supabase
+          .from("cities")
+          .select("name")
+          .eq("id", profile.city_id)
+          .single();
+        if (city) setCityName(city.name);
+      }
 
-      const selected = list.find((c) => c.id === (cityId || firstId));
-      setCityName(selected?.name ?? "");
+      const { data: building, error: bErr } = await supabase
+        .from("buildings")
+        .select("*")
+        .eq("id", buildingId)
+        .single();
+
+      if (bErr) {
+        setError(bErr.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!building) {
+        setError("Building not found");
+        setLoading(false);
+        return;
+      }
+
+      // Populate form fields
+      setBuildingName(building.building_name ?? "");
+      setStreetAddress(building.street_address ?? "");
+      setLatitude(building.latitude != null ? String(building.latitude) : "");
+      setLongitude(building.longitude != null ? String(building.longitude) : "");
+      setClassification(building.classification ?? "residential");
+      setOccupants(building.occupants != null ? String(building.occupants) : "");
+      setPhotoUrl(building.photo_url ?? "");
+
+      // NEW FIELDS
+      setCondition(building.condition ?? "");
+      setYearBuilt(building.year_built != null ? String(building.year_built) : "");
+      setFloors(building.floors != null ? String(building.floors) : "");
+      setOwnershipType(building.ownership_type ?? "");
+      setComplianceStatus(building.compliance_status ?? "");
+      setHasElectricity(building.has_electricity ?? false);
+      setHasWater(building.has_water ?? false);
+      setHasSewerage(building.has_sewerage ?? false);
+      setFloorAreaSqm(building.floor_area_sqm != null ? String(building.floor_area_sqm) : "");
 
       setLoading(false);
     }
 
-    init();
-  }, [router]);
+    loadBuilding();
+  }, [buildingId, router]);
 
-  useEffect(() => {
-    const selected = cities.find((c) => c.id === cityId);
-    setCityName(selected?.name ?? "");
-  }, [cities, cityId]);
-
-  // Debounced search for address suggestions
+  // Debounced address search
   useEffect(() => {
     const q = addrQuery.trim();
     setAddrError(null);
@@ -226,12 +271,6 @@ export default function AdminNewBuildingPage() {
     setError(null);
     setSaving(true);
 
-    if (!cityId) {
-      setSaving(false);
-      setError("Select a city.");
-      return;
-    }
-
     const lat = latitude.trim() === "" ? null : Number(latitude);
     const lon = longitude.trim() === "" ? null : Number(longitude);
     const occ = occupants.trim() === "" ? null : Number(occupants);
@@ -273,35 +312,58 @@ export default function AdminNewBuildingPage() {
       return;
     }
 
-    const { error: insErr } = await supabase.from("buildings").insert({
-      city_id: cityId,
-      building_name: buildingName,
-      street_address: streetAddress,
-      latitude: lat,
-      longitude: lon,
-      classification,
-      occupants: occ,
-      photo_url: photoUrl.trim() === "" ? null : photoUrl.trim(),
-      // NEW FIELDS
-      condition: condition === "" ? null : condition,
-      year_built: yearBuiltNum,
-      floors: floorsNum,
-      ownership_type: ownershipType === "" ? null : ownershipType,
-      compliance_status: complianceStatus === "" ? null : complianceStatus,
-      has_electricity: hasElectricity,
-      has_water: hasWater,
-      has_sewerage: hasSewerage,
-      floor_area_sqm: floorAreaNum,
-    });
+    const { error: updateErr } = await supabase
+      .from("buildings")
+      .update({
+        building_name: buildingName,
+        street_address: streetAddress,
+        latitude: lat,
+        longitude: lon,
+        classification,
+        occupants: occ,
+        photo_url: photoUrl.trim() === "" ? null : photoUrl.trim(),
+        // NEW FIELDS
+        condition: condition === "" ? null : condition,
+        year_built: yearBuiltNum,
+        floors: floorsNum,
+        ownership_type: ownershipType === "" ? null : ownershipType,
+        compliance_status: complianceStatus === "" ? null : complianceStatus,
+        has_electricity: hasElectricity,
+        has_water: hasWater,
+        has_sewerage: hasSewerage,
+        floor_area_sqm: floorAreaNum,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", buildingId);
 
     setSaving(false);
 
-    if (insErr) {
-      setError(insErr.message);
+    if (updateErr) {
+      setError(updateErr.message);
       return;
     }
 
-    router.push("/admin/buildings");
+    router.push("/app/buildings");
+  }
+
+  async function handleDelete() {
+    if (!confirm("Are you sure you want to delete this building? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeleting(true);
+    setError(null);
+
+    const { error: delErr } = await supabase.from("buildings").delete().eq("id", buildingId);
+
+    setDeleting(false);
+
+    if (delErr) {
+      setError(delErr.message);
+      return;
+    }
+
+    router.push("/app/buildings");
   }
 
   if (loading) {
@@ -324,9 +386,9 @@ export default function AdminNewBuildingPage() {
           }}
         >
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>
-            {cityName ? `Add building for ${cityName}` : "Add building"}
+            {cityName ? `Edit building - ${cityName}` : "Edit building"}
           </h1>
-          <p style={{ opacity: 0.85, marginTop: 6 }}>Admin: Capture a new building record with detailed information</p>
+          <p style={{ opacity: 0.85, marginTop: 6 }}>Update building information</p>
         </div>
 
         <form
@@ -340,32 +402,6 @@ export default function AdminNewBuildingPage() {
             gap: 16,
           }}
         >
-          {/* City Selection */}
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>
-              City <span style={{ color: "#f87171" }}>*</span>
-            </span>
-            <select
-              value={cityId}
-              onChange={(e) => setCityId(e.target.value)}
-              required
-              style={{
-                width: "100%",
-                padding: 12,
-                borderRadius: 10,
-                border: "1px solid #1f2937",
-                background: "#111827",
-                color: "white",
-              }}
-            >
-              {cities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
           {/* Section: Basic Information */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#38bdf8" }}>
@@ -434,10 +470,6 @@ export default function AdminNewBuildingPage() {
               >
                 Fill coordinates from selected address
               </button>
-
-              <div style={{ color: "#9ca3af", fontSize: 12, alignSelf: "center" }}>
-                Pick a suggested address then click the button
-              </div>
             </div>
 
             {showSuggestions && (
@@ -466,35 +498,32 @@ export default function AdminNewBuildingPage() {
 
                 {addrLoading ? null : suggestions.length === 0 ? (
                   <div style={{ padding: 10, color: "#9ca3af", fontSize: 12 }}>
-                    Type at least 3 characters to see matches
+                    Type at least 3 characters
                   </div>
                 ) : (
                   <div>
-                    {suggestions.map((s) => {
-                      const active = selectedPlace?.place_id === s.place_id;
-                      return (
-                        <button
-                          key={String(s.place_id)}
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => onPickSuggestion(s)}
-                          style={{
-                            width: "100%",
-                            textAlign: "left",
-                            padding: 10,
-                            border: "none",
-                            background: active ? "#111827" : "#0b1220",
-                            color: "white",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 800 }}>{s.display_name}</div>
-                          <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
-                            lat {s.lat}, lon {s.lon}
-                          </div>
-                        </button>
-                      );
-                    })}
+                    {suggestions.map((s) => (
+                      <button
+                        key={String(s.place_id)}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => onPickSuggestion(s)}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          padding: 10,
+                          border: "none",
+                          background: selectedPlace?.place_id === s.place_id ? "#111827" : "#0b1220",
+                          color: "white",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 800 }}>{s.display_name}</div>
+                        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
+                          lat {s.lat}, lon {s.lon}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -552,13 +581,9 @@ export default function AdminNewBuildingPage() {
             >
               {geoLoading ? "Getting location..." : "📍 Use my location"}
             </button>
-
-            <div style={{ color: "#9ca3af", fontSize: 12, alignSelf: "center" }}>
-              Fills latitude and longitude from your device location
-            </div>
           </div>
 
-          {/* Section: Building Details */}
+          {/* Building Details */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#22c55e" }}>
               🏗️ Building Details
@@ -635,7 +660,7 @@ export default function AdminNewBuildingPage() {
             </label>
 
             <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Number of Floors</span>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Floors</span>
               <input
                 value={floors}
                 onChange={(e) => setFloors(e.target.value)}
@@ -673,7 +698,7 @@ export default function AdminNewBuildingPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Ownership Type</span>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Ownership</span>
               <select
                 value={ownershipType}
                 onChange={(e) => setOwnershipType(e.target.value as any)}
@@ -686,7 +711,7 @@ export default function AdminNewBuildingPage() {
                   color: "white",
                 }}
               >
-                <option value="">Select ownership...</option>
+                <option value="">Select...</option>
                 {OWNERSHIP_OPTIONS.map((o) => (
                   <option key={o} value={o}>
                     {o}
@@ -696,7 +721,7 @@ export default function AdminNewBuildingPage() {
             </label>
 
             <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Compliance Status</span>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Compliance</span>
               <select
                 value={complianceStatus}
                 onChange={(e) => setComplianceStatus(e.target.value as any)}
@@ -709,7 +734,7 @@ export default function AdminNewBuildingPage() {
                   color: "white",
                 }}
               >
-                <option value="">Select compliance...</option>
+                <option value="">Select...</option>
                 {COMPLIANCE_OPTIONS.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -720,7 +745,7 @@ export default function AdminNewBuildingPage() {
           </div>
 
           <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Approximate occupants</span>
+            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Occupants</span>
             <input
               value={occupants}
               onChange={(e) => setOccupants(e.target.value)}
@@ -737,10 +762,10 @@ export default function AdminNewBuildingPage() {
             />
           </label>
 
-          {/* Section: Utilities & Infrastructure */}
+          {/* Utilities */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#f97316" }}>
-              ⚡ Utilities & Infrastructure
+              ⚡ Utilities
             </h3>
           </div>
 
@@ -809,15 +834,15 @@ export default function AdminNewBuildingPage() {
             </label>
           </div>
 
-          {/* Section: Additional Information */}
+          {/* Photo */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#a78bfa" }}>
-              📸 Additional Information
+              📸 Additional
             </h3>
           </div>
 
           <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Photo or image URL</span>
+            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Photo URL</span>
             <input
               value={photoUrl}
               onChange={(e) => setPhotoUrl(e.target.value)}
@@ -833,14 +858,20 @@ export default function AdminNewBuildingPage() {
             />
           </label>
 
-          {/* Submit Buttons */}
-          <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
-            <button type="submit" disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.8 : 1 }}>
-              {saving ? "Saving..." : "💾 Save building"}
-            </button>
+          {/* Buttons */}
+          <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button type="submit" disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.8 : 1 }}>
+                {saving ? "Saving..." : "💾 Update"}
+              </button>
 
-            <button type="button" onClick={() => router.push("/admin/buildings")} style={btnDark}>
-              Cancel
+              <button type="button" onClick={() => router.push("/app/buildings")} style={btnDark}>
+                Cancel
+              </button>
+            </div>
+
+            <button type="button" onClick={handleDelete} disabled={deleting} style={{ ...btnRed, opacity: deleting ? 0.8 : 1 }}>
+              {deleting ? "Deleting..." : "🗑️ Delete"}
             </button>
           </div>
 
