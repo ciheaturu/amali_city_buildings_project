@@ -24,7 +24,7 @@ const btnPrimary: React.CSSProperties = {
   transition: "all 0.2s",
 };
 
-const btnSecondary: React.CSSStyles = {
+const btnSecondary: React.CSSProperties = {
   padding: "12px 24px",
   borderRadius: 10,
   background: "#111827",
