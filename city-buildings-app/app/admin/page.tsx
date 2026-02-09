@@ -4,22 +4,72 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-const btnDark: React.CSSProperties = {
-  padding: "10px 12px",
+type AdminStats = {
+  totalCities: number;
+  totalBuildings: number;
+  totalOccupants: number;
+  avgInfrastructureScore: number;
+};
+
+const btnPrimary: React.CSSProperties = {
+  padding: "12px 24px",
+  borderRadius: 10,
+  background: "#38bdf8",
+  border: "none",
+  color: "#0b1220",
+  fontWeight: 900,
+  cursor: "pointer",
+  textDecoration: "none",
+  display: "inline-block",
+  transition: "all 0.2s",
+};
+
+const btnSecondary: React.CSSStyles = {
+  padding: "12px 24px",
   borderRadius: 10,
   background: "#111827",
-  color: "white",
   border: "1px solid #1f2937",
+  color: "white",
   fontWeight: 800,
   cursor: "pointer",
+  textDecoration: "none",
+  display: "inline-block",
+  transition: "all 0.2s",
 };
+
+function StatCard({ title, value, icon, color }: { title: string; value: string; icon: string; color: string }) {
+  return (
+    <div
+      style={{
+        borderRadius: 14,
+        padding: 20,
+        background: "#111827",
+        border: "1px solid #1f2937",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+      }}
+    >
+      <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
+      <div style={{ fontSize: 28, fontWeight: 900, color, marginBottom: 4 }}>{value}</div>
+      <div style={{ fontSize: 13, color: "#9ca3af", fontWeight: 600 }}>{title}</div>
+    </div>
+  );
+}
 
 export default function AdminHomePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [stats, setStats] = useState<AdminStats>({
+    totalCities: 0,
+    totalBuildings: 0,
+    totalOccupants: 0,
+    avgInfrastructureScore: 0,
+  });
 
   useEffect(() => {
-    async function guard() {
+    async function loadAdminDashboard() {
+      setLoading(true);
+
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
 
@@ -27,6 +77,8 @@ export default function AdminHomePage() {
         router.push("/login");
         return;
       }
+
+      setAdminEmail(user.email || "");
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -39,10 +91,46 @@ export default function AdminHomePage() {
         return;
       }
 
+      // Load cities
+      const { data: cities } = await supabase.from("cities").select("id");
+      const totalCities = cities?.length || 0;
+
+      // Load buildings
+      const { data: buildings } = await supabase
+        .from("buildings")
+        .select("occupants, has_electricity, has_water, has_sewerage");
+
+      if (buildings) {
+        const totalBuildings = buildings.length;
+        const totalOccupants = buildings.reduce((sum, b) => sum + (b.occupants || 0), 0);
+
+        // Calculate infrastructure score
+        const withElectricity = buildings.filter((b) => b.has_electricity).length;
+        const withWater = buildings.filter((b) => b.has_water).length;
+        const withSewerage = buildings.filter((b) => b.has_sewerage).length;
+        const avgInfrastructureScore = totalBuildings
+          ? ((withElectricity + withWater + withSewerage) / (totalBuildings * 3)) * 100
+          : 0;
+
+        setStats({
+          totalCities,
+          totalBuildings,
+          totalOccupants,
+          avgInfrastructureScore: Math.round(avgInfrastructureScore),
+        });
+      } else {
+        setStats({
+          totalCities,
+          totalBuildings: 0,
+          totalOccupants: 0,
+          avgInfrastructureScore: 0,
+        });
+      }
+
       setLoading(false);
     }
 
-    guard();
+    loadAdminDashboard();
   }, [router]);
 
   async function signOut() {
@@ -53,79 +141,376 @@ export default function AdminHomePage() {
   if (loading) {
     return (
       <main style={{ background: "#020617", minHeight: "100vh", color: "white", padding: 24 }}>
-        Loading...
+        <div style={{ textAlign: "center", paddingTop: 100 }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              border: "4px solid #1f2937",
+              borderTop: "4px solid #38bdf8",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 16px",
+            }}
+          />
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#9ca3af" }}>Loading admin dashboard...</div>
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
       </main>
     );
   }
 
   return (
     <main style={{ background: "#020617", minHeight: "100vh", color: "white" }}>
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: 24 }}>
+      <div style={{ maxWidth: 1180, margin: "0 auto", padding: 24 }}>
+        {/* Header */}
         <div
           style={{
             borderRadius: 16,
-            padding: 20,
-            background: "linear-gradient(135deg,#1d4ed8,#0ea5e9)",
-            marginBottom: 18,
+            padding: 24,
+            background: "linear-gradient(135deg, #1d4ed8, #0ea5e9)",
+            marginBottom: 24,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 16,
           }}
         >
-          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>Admin</h1>
-          <p style={{ opacity: 0.85, marginTop: 6 }}>
-            Manage and analyse buildings across all cities
-          </p>
+          <div>
+            <h1 style={{ fontSize: 36, fontWeight: 900, margin: 0, marginBottom: 8 }}>
+              🏛️ Admin Control Center
+            </h1>
+            <p style={{ opacity: 0.9, margin: 0, fontSize: 18 }}>
+              Cross-city building management and analytics • {adminEmail}
+            </p>
+          </div>
+
+          <button
+            onClick={signOut}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 10,
+              background: "rgba(255,255,255,0.2)",
+              border: "1px solid rgba(255,255,255,0.3)",
+              color: "white",
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            🚪 Sign Out
+          </button>
+        </div>
+
+        {/* Quick Stats */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 16,
+            marginBottom: 32,
+          }}
+        >
+          <StatCard
+            title="Total Cities"
+            value={stats.totalCities.toString()}
+            icon="🌍"
+            color="#a78bfa"
+          />
+          <StatCard
+            title="Total Buildings"
+            value={stats.totalBuildings.toLocaleString()}
+            icon="🏢"
+            color="#38bdf8"
+          />
+          <StatCard
+            title="Total Occupants"
+            value={stats.totalOccupants.toLocaleString()}
+            icon="👥"
+            color="#22c55e"
+          />
+          <StatCard
+            title="Infrastructure Score"
+            value={`${stats.avgInfrastructureScore}%`}
+            icon="⚡"
+            color={
+              stats.avgInfrastructureScore > 70
+                ? "#22c55e"
+                : stats.avgInfrastructureScore > 40
+                ? "#f97316"
+                : "#e11d48"
+            }
+          />
+        </div>
+
+        {/* Quick Actions */}
+        <div
+          style={{
+            borderRadius: 16,
+            background: "#111827",
+            border: "1px solid #1f2937",
+            padding: 24,
+            marginBottom: 24,
+          }}
+        >
+          <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, marginBottom: 16 }}>
+            🚀 Quick Actions
+          </h2>
 
           <div
             style={{
-              marginTop: 12,
-              display: "flex",
-              justifyContent: "flex-end",
-              alignItems: "center",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+              gap: 16,
             }}
           >
-            <button onClick={signOut} style={btnDark}>
-              Sign out
+            <button
+              onClick={() => router.push("/admin/buildings/new")}
+              style={{
+                ...btnPrimary,
+                textAlign: "left",
+                padding: 20,
+                width: "100%",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(56, 189, 248, 0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <div style={{ fontSize: 24, marginBottom: 8 }}>➕</div>
+              <div style={{ fontSize: 16, fontWeight: 900 }}>Add New Building</div>
+              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
+                Create building for any city
+              </div>
+            </button>
+
+            <button
+              onClick={() => router.push("/admin/buildings")}
+              style={{
+                ...btnSecondary,
+                textAlign: "left",
+                padding: 20,
+                width: "100%",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#1f2937";
+                e.currentTarget.style.transform = "translateY(-2px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#111827";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              <div style={{ fontSize: 24, marginBottom: 8 }}>🏢</div>
+              <div style={{ fontSize: 16, fontWeight: 900 }}>Manage Buildings</div>
+              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+                View, edit, and export all buildings
+              </div>
+            </button>
+
+            <button
+              onClick={() => router.push("/admin/dashboard")}
+              style={{
+                ...btnSecondary,
+                textAlign: "left",
+                padding: 20,
+                width: "100%",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#1f2937";
+                e.currentTarget.style.transform = "translateY(-2px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#111827";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
+              <div style={{ fontSize: 16, fontWeight: 900 }}>Analytics Dashboard</div>
+              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+                Cross-city insights and charts
+              </div>
             </button>
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <button
-            onClick={() => router.push("/admin/buildings")}
-            style={{
-              borderRadius: 14,
-              padding: 18,
-              background: "#111827",
-              border: "1px solid #1f2937",
-              textAlign: "left",
-              cursor: "pointer",
-            }}
-          >
-            <div style={{ fontSize: 16, fontWeight: 900, color: "#22c55e" }}>
-              Buildings
-            </div>
-            <div style={{ marginTop: 6, color: "#9ca3af", fontSize: 12 }}>
-              Add, edit, and export buildings across cities
-            </div>
-          </button>
+        {/* Admin Capabilities */}
+        <div
+          style={{
+            borderRadius: 16,
+            background: "#111827",
+            border: "1px solid #1f2937",
+            padding: 24,
+          }}
+        >
+          <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, marginBottom: 16 }}>
+            🔧 Admin Capabilities
+          </h2>
 
-          <button
-            onClick={() => router.push("/admin/dashboard")}
-            style={{
-              borderRadius: 14,
-              padding: 18,
-              background: "#111827",
-              border: "1px solid #1f2937",
-              textAlign: "left",
-              cursor: "pointer",
-            }}
-          >
-            <div style={{ fontSize: 16, fontWeight: 900, color: "#38bdf8" }}>
-              Dashboard
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
+              <div
+                style={{
+                  fontSize: 28,
+                  width: 48,
+                  height: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#1f2937",
+                  borderRadius: 10,
+                }}
+              >
+                🌍
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
+                  Multi-City Management
+                </h3>
+                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                  Manage buildings across all cities from a single interface with full CRUD capabilities
+                </p>
+              </div>
             </div>
-            <div style={{ marginTop: 6, color: "#9ca3af", fontSize: 12 }}>
-              Compare cities and view summary charts
+
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
+              <div
+                style={{
+                  fontSize: 28,
+                  width: 48,
+                  height: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#1f2937",
+                  borderRadius: 10,
+                }}
+              >
+                📈
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
+                  Advanced Analytics
+                </h3>
+                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                  Compare cities, track condition, compliance, ownership, utilities, and infrastructure health
+                </p>
+              </div>
             </div>
-          </button>
+
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
+              <div
+                style={{
+                  fontSize: 28,
+                  width: 48,
+                  height: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#1f2937",
+                  borderRadius: 10,
+                }}
+              >
+                📊
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
+                  Data Visualization
+                </h3>
+                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                  Interactive charts for classification, condition, ownership, compliance, and utilities
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
+              <div
+                style={{
+                  fontSize: 28,
+                  width: 48,
+                  height: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#1f2937",
+                  borderRadius: 10,
+                }}
+              >
+                💾
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
+                  Bulk Data Export
+                </h3>
+                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                  Export comprehensive building data across all cities to CSV for external analysis
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
+              <div
+                style={{
+                  fontSize: 28,
+                  width: 48,
+                  height: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#1f2937",
+                  borderRadius: 10,
+                }}
+              >
+                🗺️
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
+                  Unified Map View
+                </h3>
+                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                  View all building locations across all cities on a single interactive map
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
+              <div
+                style={{
+                  fontSize: 28,
+                  width: 48,
+                  height: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#1f2937",
+                  borderRadius: 10,
+                }}
+              >
+                🔍
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
+                  Comprehensive Building Data
+                </h3>
+                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                  Track 18+ building attributes including condition, age, utilities, compliance, and more
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </main>
