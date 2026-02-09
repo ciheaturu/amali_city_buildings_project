@@ -14,22 +14,22 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
 } from "recharts";
 import dynamic from "next/dynamic";
 
-// Dynamically import the Leaflet map to disable SSR
-const BuildingMap = dynamic(() => import("./BuildingMap"), { ssr: false });
+const BuildingMap = dynamic(() => import("../../app/dashboard/BuildingMap"), { ssr: false });
 
-type Profile = { role: "city" | "admin"; city_id: string | null };
-type City = { id: string; name: string };
 type BuildingRow = {
   id: string;
+  building_name: string;
+  street_address: string;
   city_id: string;
   classification: string;
   occupants: number | null;
   latitude?: number | null;
   longitude?: number | null;
-  // NEW FIELDS
   condition?: string | null;
   year_built?: number | null;
   floors?: number | null;
@@ -41,7 +41,47 @@ type BuildingRow = {
   floor_area_sqm?: number | null;
 };
 
+type City = {
+  id: string;
+  name: string;
+};
+
+type Filters = {
+  cityId: string;
+  classification: string;
+  condition: string;
+  ownership: string;
+  compliance: string;
+  yearFrom: string;
+  yearTo: string;
+  hasElectricity: boolean | null;
+  hasWater: boolean | null;
+  hasSewerage: boolean | null;
+  searchTerm: string;
+};
+
 const PIE_COLORS = ["#38bdf8", "#22c55e", "#f97316", "#e11d48", "#a78bfa", "#facc15"];
+
+const btnDark = {
+  padding: "10px 12px",
+  borderRadius: 10,
+  background: "#111827",
+  color: "white",
+  border: "1px solid #1f2937",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const btnRed = {
+  padding: "8px 12px",
+  borderRadius: 8,
+  background: "#dc2626",
+  border: "none",
+  color: "white",
+  fontWeight: 700,
+  cursor: "pointer",
+  fontSize: 12,
+};
 
 function toCsv(rows: any[]) {
   if (!rows.length) return "";
@@ -60,26 +100,6 @@ function downloadCsv(filename: string, csv: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
-
-const btnDark: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 10,
-  background: "#111827",
-  color: "white",
-  border: "1px solid #1f2937",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const btnGreen: React.CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: 10,
-  background: "#22c55e",
-  border: "none",
-  color: "#052e16",
-  fontWeight: 900,
-  cursor: "pointer",
-};
 
 function Card(props: { title: string; value: string; subtitle?: string; accent?: string }) {
   return (
@@ -106,15 +126,29 @@ function Card(props: { title: string; value: string; subtitle?: string; accent?:
 export default function AdminDashboardPage() {
   const router = useRouter();
 
-  const [cities, setCities] = useState<City[]>([]);
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adminEmail, setAdminEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Load all data
+  const [filters, setFilters] = useState<Filters>({
+    cityId: "",
+    classification: "",
+    condition: "",
+    ownership: "",
+    compliance: "",
+    yearFrom: "",
+    yearTo: "",
+    hasElectricity: null,
+    hasWater: null,
+    hasSewerage: null,
+    searchTerm: "",
+  });
+
+  const [showFilters, setShowFilters] = useState(false);
+
   useEffect(() => {
-    async function guardAndLoad() {
+    async function loadData() {
       setLoading(true);
       setError(null);
 
@@ -122,132 +156,158 @@ export default function AdminDashboardPage() {
       const user = userData.user;
       if (!user) return router.replace("/login");
 
-      setAdminEmail(user.email ?? "");
-
       const { data: profile, error: profErr } = await supabase
         .from("profiles")
-        .select("role, city_id")
+        .select("role")
         .eq("user_id", user.id)
         .single();
 
       if (profErr || !profile) return router.replace("/login");
+      if (profile.role !== "admin") return router.replace("/app");
 
-      const p = profile as Profile;
-      if (p.role !== "admin") return router.replace("/app/dashboard");
-
-      const { data: cityRows, error: cityErr } = await supabase
-        .from("cities")
-        .select("id, name")
-        .order("name", { ascending: true });
-      if (cityErr) return setError(cityErr.message);
-
+      const { data: cityRows } = await supabase.from("cities").select("id, name").order("name");
       setCities((cityRows ?? []) as City[]);
 
-      const { data: buildingRows, error: bErr } = await supabase
-        .from("buildings")
-        .select(`
-          id, city_id, classification, occupants, latitude, longitude,
-          condition, year_built, floors, ownership_type, compliance_status,
-          has_electricity, has_water, has_sewerage, floor_area_sqm
-        `);
-      if (bErr) return setError(bErr.message);
+      const { data: buildingRows, error: bErr } = await supabase.from("buildings").select("*");
 
+      if (bErr) return setError(bErr.message);
       setBuildings((buildingRows ?? []) as BuildingRow[]);
+
       setLoading(false);
     }
 
-    guardAndLoad();
+    loadData();
   }, [router]);
 
-  const summary = useMemo(() => {
-    const totalBuildings = buildings.length;
-    const totalOccupants = buildings.reduce((s, b) => s + (b.occupants ?? 0), 0);
-    const avgOccupants = totalBuildings ? totalOccupants / totalBuildings : 0;
+  const filteredBuildings = useMemo(() => {
+    return buildings.filter((b) => {
+      if (filters.cityId && b.city_id !== filters.cityId) return false;
+      if (filters.classification && b.classification !== filters.classification) return false;
+      if (filters.condition && b.condition !== filters.condition) return false;
+      if (filters.ownership && b.ownership_type !== filters.ownership) return false;
+      if (filters.compliance && b.compliance_status !== filters.compliance) return false;
 
-    const cityNameById = new Map<string, string>();
-    cities.forEach((c) => cityNameById.set(c.id, c.name));
+      if (filters.yearFrom) {
+        const year = b.year_built;
+        if (!year || year < Number(filters.yearFrom)) return false;
+      }
+      if (filters.yearTo) {
+        const year = b.year_built;
+        if (!year || year > Number(filters.yearTo)) return false;
+      }
 
-    const byCity: Record<string, { city: string; buildings: number; occupants: number }> = {};
-    buildings.forEach((b) => {
-      const name = cityNameById.get(b.city_id) ?? b.city_id;
-      if (!byCity[b.city_id]) byCity[b.city_id] = { city: name, buildings: 0, occupants: 0 };
-      byCity[b.city_id].buildings += 1;
-      byCity[b.city_id].occupants += b.occupants ?? 0;
+      if (filters.hasElectricity !== null && b.has_electricity !== filters.hasElectricity) return false;
+      if (filters.hasWater !== null && b.has_water !== filters.hasWater) return false;
+      if (filters.hasSewerage !== null && b.has_sewerage !== filters.hasSewerage) return false;
+
+      if (filters.searchTerm) {
+        const term = filters.searchTerm.toLowerCase();
+        const nameMatch = b.building_name?.toLowerCase().includes(term);
+        const addressMatch = b.street_address?.toLowerCase().includes(term);
+        if (!nameMatch && !addressMatch) return false;
+      }
+
+      return true;
+    });
+  }, [buildings, filters]);
+
+  const insights = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+
+    const priorityBuildings = filteredBuildings
+      .filter((b) => (b.condition === "Poor" || b.condition === "Dilapidated") && (b.occupants ?? 0) > 50)
+      .sort((a, b) => (b.occupants ?? 0) - (a.occupants ?? 0))
+      .slice(0, 10);
+
+    const noElectricity = filteredBuildings.filter((b) => !b.has_electricity);
+    const noWater = filteredBuildings.filter((b) => !b.has_water);
+    const noSewerage = filteredBuildings.filter((b) => !b.has_sewerage);
+
+    const nonCompliant = filteredBuildings.filter((b) => b.compliance_status === "Non-compliant");
+
+    const agingInfra = filteredBuildings.filter((b) => {
+      if (!b.year_built) return false;
+      const age = currentYear - b.year_built;
+      return age > 50 && (b.condition === "Poor" || b.condition === "Fair");
     });
 
-    const buildingsPerCity = Object.values(byCity).sort((a, b) => b.buildings - a.buildings);
+    const needsAssessment = filteredBuildings.filter(
+      (b) => !b.condition || b.compliance_status === "Not Assessed"
+    );
 
-    const avgOccPerCity = buildingsPerCity.map((c) => ({
-      city: c.city,
-      avg_occupants: c.buildings ? c.occupants / c.buildings : 0,
-    }));
+    return {
+      priorityBuildings,
+      noElectricity,
+      noWater,
+      noSewerage,
+      nonCompliant,
+      agingInfra,
+      needsAssessment,
+    };
+  }, [filteredBuildings]);
+
+  const cityComparison = useMemo(() => {
+    const cityStats: Record<string, any> = {};
+
+    cities.forEach((city) => {
+      const cityBuildings = filteredBuildings.filter((b) => b.city_id === city.id);
+      const total = cityBuildings.length;
+      const totalOccupants = cityBuildings.reduce((s, b) => s + (b.occupants ?? 0), 0);
+
+      const withElec = cityBuildings.filter((b) => b.has_electricity).length;
+      const withWater = cityBuildings.filter((b) => b.has_water).length;
+      const withSewer = cityBuildings.filter((b) => b.has_sewerage).length;
+      const infraScore = total ? ((withElec + withWater + withSewer) / (total * 3)) * 100 : 0;
+
+      const compliant = cityBuildings.filter((b) => b.compliance_status === "Compliant").length;
+      const complianceRate = total ? (compliant / total) * 100 : 0;
+
+      cityStats[city.id] = {
+        name: city.name,
+        total,
+        totalOccupants,
+        infraScore,
+        complianceRate,
+      };
+    });
+
+    return Object.values(cityStats).filter((c: any) => c.total > 0);
+  }, [cities, filteredBuildings]);
+
+  const summary = useMemo(() => {
+    const total = filteredBuildings.length;
+    const totalOccupants = filteredBuildings.reduce((s, b) => s + (b.occupants ?? 0), 0);
+
+    const currentYear = new Date().getFullYear();
+    const withAge = filteredBuildings.filter((b) => b.year_built);
+    const avgAge = withAge.length
+      ? withAge.reduce((s, b) => s + (currentYear - (b.year_built ?? currentYear)), 0) / withAge.length
+      : 0;
+
+    const withElec = filteredBuildings.filter((b) => b.has_electricity).length;
+    const withWater = filteredBuildings.filter((b) => b.has_water).length;
+    const withSewer = filteredBuildings.filter((b) => b.has_sewerage).length;
+    const infraScore = total ? ((withElec + withWater + withSewer) / (total * 3)) * 100 : 0;
 
     const byClass: Record<string, number> = {};
-    buildings.forEach((b) => {
-      const cls = b.classification ?? "unknown";
-      byClass[cls] = (byClass[cls] ?? 0) + 1;
+    filteredBuildings.forEach((b) => {
+      byClass[b.classification] = (byClass[b.classification] ?? 0) + 1;
     });
-    const classCounts = Object.entries(byClass).map(([classification, count]) => ({ classification, count }));
+    const classData = Object.entries(byClass).map(([name, value]) => ({ name, value }));
 
-    // NEW ANALYTICS: Building Condition Distribution
     const byCondition: Record<string, number> = {};
-    buildings.forEach((b) => {
-      if (b.condition) {
-        byCondition[b.condition] = (byCondition[b.condition] ?? 0) + 1;
-      }
+    filteredBuildings.forEach((b) => {
+      if (b.condition) byCondition[b.condition] = (byCondition[b.condition] ?? 0) + 1;
     });
     const conditionData = Object.entries(byCondition).map(([name, value]) => ({ name, value }));
 
-    // NEW ANALYTICS: Compliance Status
     const byCompliance: Record<string, number> = {};
-    buildings.forEach((b) => {
-      if (b.compliance_status) {
-        byCompliance[b.compliance_status] = (byCompliance[b.compliance_status] ?? 0) + 1;
-      }
+    filteredBuildings.forEach((b) => {
+      if (b.compliance_status) byCompliance[b.compliance_status] = (byCompliance[b.compliance_status] ?? 0) + 1;
     });
     const complianceData = Object.entries(byCompliance).map(([status, count]) => ({ status, count }));
 
-    // NEW ANALYTICS: Ownership Distribution
-    const byOwnership: Record<string, number> = {};
-    buildings.forEach((b) => {
-      if (b.ownership_type) {
-        byOwnership[b.ownership_type] = (byOwnership[b.ownership_type] ?? 0) + 1;
-      }
-    });
-    const ownershipData = Object.entries(byOwnership).map(([name, value]) => ({ name, value }));
-
-    // NEW ANALYTICS: Utility Coverage
-    const withElectricity = buildings.filter((b) => b.has_electricity === true).length;
-    const withWater = buildings.filter((b) => b.has_water === true).length;
-    const withSewerage = buildings.filter((b) => b.has_sewerage === true).length;
-    const utilityCoverage = [
-      { utility: "Electricity", count: withElectricity, percentage: totalBuildings ? (withElectricity / totalBuildings) * 100 : 0 },
-      { utility: "Water", count: withWater, percentage: totalBuildings ? (withWater / totalBuildings) * 100 : 0 },
-      { utility: "Sewerage", count: withSewerage, percentage: totalBuildings ? (withSewerage / totalBuildings) * 100 : 0 },
-    ];
-
-    // NEW ANALYTICS: Average Building Age
-    const buildingsWithAge = buildings.filter((b) => b.year_built != null);
-    const currentYear = new Date().getFullYear();
-    const avgAge = buildingsWithAge.length
-      ? buildingsWithAge.reduce((sum, b) => sum + (currentYear - (b.year_built ?? currentYear)), 0) / buildingsWithAge.length
-      : 0;
-
-    // NEW ANALYTICS: Average Floors
-    const buildingsWithFloors = buildings.filter((b) => b.floors != null);
-    const avgFloors = buildingsWithFloors.length
-      ? buildingsWithFloors.reduce((sum, b) => sum + (b.floors ?? 0), 0) / buildingsWithFloors.length
-      : 0;
-
-    // NEW ANALYTICS: Total Floor Area
-    const totalFloorArea = buildings.reduce((sum, b) => sum + (b.floor_area_sqm ?? 0), 0);
-
-    // Infrastructure Health Score (0-100)
-    const healthScore = totalBuildings
-      ? ((withElectricity + withWater + withSewerage) / (totalBuildings * 3)) * 100
-      : 0;
-
-    const points = buildings
+    const points = filteredBuildings
       .filter((b) => b.latitude != null && b.longitude != null)
       .map((b) => ({ ...b, latitude: b.latitude as number, longitude: b.longitude as number }));
 
@@ -258,52 +318,65 @@ export default function AdminDashboardPage() {
       center = [latAvg, lonAvg];
     }
 
+    const cityNameById = new Map(cities.map((c) => [c.id, c.name]));
+
     return {
-      totalBuildings,
+      total,
       totalOccupants,
-      avgOccupants,
-      buildingsPerCity,
-      avgOccPerCity,
-      classCounts,
+      avgAge,
+      infraScore,
+      classData,
+      conditionData,
+      complianceData,
       points,
       center,
       cityNameById,
-      // NEW METRICS
-      conditionData,
-      complianceData,
-      ownershipData,
-      utilityCoverage,
-      avgAge,
-      avgFloors,
-      totalFloorArea,
-      healthScore,
     };
-  }, [cities, buildings]);
+  }, [filteredBuildings, cities]);
 
-  async function exportAllCsv() {
-    setError(null);
-
-    const cityNameById = new Map<string, string>();
-    cities.forEach((c) => cityNameById.set(c.id, c.name));
-
-    const { data, error } = await supabase
-      .from("buildings")
-      .select(`
-        id, city_id, building_name, street_address, latitude, longitude, 
-        classification, occupants, photo_url, created_at, updated_at,
-        condition, year_built, floors, ownership_type, compliance_status,
-        has_electricity, has_water, has_sewerage, floor_area_sqm
-      `);
-    if (error) return setError(error.message);
-
-    const rows = (data ?? []).map((r: any) => ({ ...r, city_name: cityNameById.get(r.city_id) ?? "" }));
-    const filename = `all_cities_buildings_${new Date().toISOString().split("T")[0]}.csv`;
-    downloadCsv(filename, toCsv(rows));
+  function clearFilters() {
+    setFilters({
+      cityId: "",
+      classification: "",
+      condition: "",
+      ownership: "",
+      compliance: "",
+      yearFrom: "",
+      yearTo: "",
+      hasElectricity: null,
+      hasWater: null,
+      hasSewerage: null,
+      searchTerm: "",
+    });
   }
 
-  async function signOut() {
+  const hasActiveFilters = Object.values(filters).some((v) => v !== "" && v !== null);
+
+  function exportFilteredData() {
+    const data = filteredBuildings.map((b) => ({
+      city: summary.cityNameById.get(b.city_id) || b.city_id,
+      name: b.building_name,
+      address: b.street_address,
+      classification: b.classification,
+      condition: b.condition ?? "",
+      year_built: b.year_built ?? "",
+      floors: b.floors ?? "",
+      occupants: b.occupants ?? "",
+      ownership: b.ownership_type ?? "",
+      compliance: b.compliance_status ?? "",
+      electricity: b.has_electricity ? "Yes" : "No",
+      water: b.has_water ? "Yes" : "No",
+      sewerage: b.has_sewerage ? "Yes" : "No",
+      floor_area_sqm: b.floor_area_sqm ?? "",
+    }));
+
+    const filename = `admin_filtered_buildings_${new Date().toISOString().split("T")[0]}.csv`;
+    downloadCsv(filename, toCsv(data));
+  }
+
+  async function handleSignOut() {
     await supabase.auth.signOut();
-    router.replace("/login");
+    router.push("/login");
   }
 
   if (loading) {
@@ -345,98 +418,418 @@ export default function AdminDashboardPage() {
             marginBottom: 18,
           }}
         >
-          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>ðŸ›ï¸ Admin Dashboard</h1>
-          <p style={{ opacity: 0.85, marginTop: 6 }}>Cross-city overview and analytics â€¢ Signed in as {adminEmail}</p>
+          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>📊 Admin Analytics Dashboard</h1>
+          <p style={{ opacity: 0.85, marginTop: 6 }}>Cross-city insights and decision support</p>
 
           <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => router.push("/admin")} style={btnDark}>ðŸ  Home</button>
-              <button onClick={() => router.push("/admin/buildings")} style={btnDark}>ðŸ¢ Buildings</button>
-              <button onClick={exportAllCsv} style={btnDark}>ðŸ“Š Export CSV</button>
-              <button onClick={() => router.push("/admin/buildings/new")} style={btnGreen}>âž• Add Building</button>
+              <button onClick={() => router.push("/admin")} style={btnDark}>🏠 Home</button>
+              <button onClick={() => router.push("/admin/buildings")} style={btnDark}>🏢 Buildings</button>
+              <button onClick={() => setShowFilters(!showFilters)} style={{ ...btnDark, background: hasActiveFilters ? "#1e40af" : btnDark.background }}>
+                🔍 Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v !== "" && v !== null).length})`}
+              </button>
+              <button onClick={exportFilteredData} style={btnDark}>📊 Export CSV</button>
             </div>
-            <button onClick={signOut} style={btnDark}>ðŸšª Sign Out</button>
+            <button onClick={handleSignOut} style={btnDark}>🚪 Sign Out</button>
           </div>
         </div>
 
         {error && <p style={{ marginTop: 8, color: "#fca5a5", padding: 12, background: "#7f1d1d", borderRadius: 8 }}>{error}</p>}
 
-        {/* Key Metrics Cards */}
+        {/* Filters Panel */}
+        {showFilters && (
+          <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 18, marginBottom: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>🔍 Filter Buildings</h2>
+              {hasActiveFilters && (
+                <button onClick={clearFilters} style={btnRed}>Clear All Filters</button>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>City</label>
+                <select
+                  value={filters.cityId}
+                  onChange={(e) => setFilters({ ...filters, cityId: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All Cities</option>
+                  {cities.map((city) => (
+                    <option key={city.id} value={city.id}>{city.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Search</label>
+                <input
+                  value={filters.searchTerm}
+                  onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+                  placeholder="Name or address..."
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Classification</label>
+                <select
+                  value={filters.classification}
+                  onChange={(e) => setFilters({ ...filters, classification: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="public">Public</option>
+                  <option value="industrial">Industrial</option>
+                  <option value="mixed-use">Mixed-use</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Condition</label>
+                <select
+                  value={filters.condition}
+                  onChange={(e) => setFilters({ ...filters, condition: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="Excellent">Excellent</option>
+                  <option value="Good">Good</option>
+                  <option value="Fair">Fair</option>
+                  <option value="Poor">Poor</option>
+                  <option value="Dilapidated">Dilapidated</option>
+                  <option value="Under Construction">Under Construction</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Ownership</label>
+                <select
+                  value={filters.ownership}
+                  onChange={(e) => setFilters({ ...filters, ownership: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="Private">Private</option>
+                  <option value="Government">Government</option>
+                  <option value="Municipal">Municipal</option>
+                  <option value="Corporate">Corporate</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Compliance</label>
+                <select
+                  value={filters.compliance}
+                  onChange={(e) => setFilters({ ...filters, compliance: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="Compliant">Compliant</option>
+                  <option value="Non-compliant">Non-compliant</option>
+                  <option value="Under Review">Under Review</option>
+                  <option value="Not Assessed">Not Assessed</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Built From</label>
+                <input
+                  type="number"
+                  value={filters.yearFrom}
+                  onChange={(e) => setFilters({ ...filters, yearFrom: e.target.value })}
+                  placeholder="1990"
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Built To</label>
+                <input
+                  type="number"
+                  value={filters.yearTo}
+                  onChange={(e) => setFilters({ ...filters, yearTo: e.target.value })}
+                  placeholder="2020"
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Electricity</label>
+                <select
+                  value={filters.hasElectricity === null ? "" : String(filters.hasElectricity)}
+                  onChange={(e) => setFilters({ ...filters, hasElectricity: e.target.value === "" ? null : e.target.value === "true" })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="true">Has Electricity</option>
+                  <option value="false">No Electricity</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Water</label>
+                <select
+                  value={filters.hasWater === null ? "" : String(filters.hasWater)}
+                  onChange={(e) => setFilters({ ...filters, hasWater: e.target.value === "" ? null : e.target.value === "true" })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="true">Has Water</option>
+                  <option value="false">No Water</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Sewerage</label>
+                <select
+                  value={filters.hasSewerage === null ? "" : String(filters.hasSewerage)}
+                  onChange={(e) => setFilters({ ...filters, hasSewerage: e.target.value === "" ? null : e.target.value === "true" })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="true">Has Sewerage</option>
+                  <option value="false">No Sewerage</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12, fontSize: 13, color: "#9ca3af" }}>
+              Showing {filteredBuildings.length} of {buildings.length} buildings
+            </div>
+          </div>
+        )}
+
+        {/* Key Metrics */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 18 }}>
-          <Card title="Total Cities" value={`${cities.length}`} accent="#38bdf8" />
-          <Card title="Total Buildings" value={`${summary.totalBuildings}`} accent="#22c55e" />
-          <Card title="Avg Occupants" value={`${summary.avgOccupants.toFixed(1)}`} accent="#f97316" />
-          <Card 
-            title="Avg Building Age" 
-            value={`${summary.avgAge.toFixed(0)} yrs`} 
-            accent="#a78bfa"
-            subtitle={summary.avgAge > 0 ? "Based on available data" : "No data"}
-          />
-          <Card 
-            title="Infrastructure Score" 
-            value={`${summary.healthScore.toFixed(0)}%`} 
-            accent={summary.healthScore > 70 ? "#22c55e" : summary.healthScore > 40 ? "#f97316" : "#e11d48"}
-            subtitle="Utility coverage"
-          />
-          <Card 
-            title="Total Floor Area" 
-            value={`${(summary.totalFloorArea / 1000).toFixed(1)}k mÂ²`} 
-            accent="#facc15"
+          <Card title="Total Buildings" value={`${summary.total}`} accent="#38bdf8" subtitle={`Across ${cities.length} cities`} />
+          <Card title="Total Occupants" value={`${summary.totalOccupants.toLocaleString()}`} accent="#22c55e" />
+          <Card title="Avg Building Age" value={`${summary.avgAge.toFixed(0)} yrs`} accent="#f97316" />
+          <Card
+            title="Infrastructure Score"
+            value={`${summary.infraScore.toFixed(0)}%`}
+            accent={summary.infraScore > 70 ? "#22c55e" : summary.infraScore > 40 ? "#f97316" : "#e11d48"}
           />
         </div>
 
-        {/* Buildings Per City */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-          <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ“Š Buildings per City</h2>
-            <div style={{ height: 300, marginTop: 10 }}>
+        {/* City Comparison */}
+        {cityComparison.length > 1 && (
+          <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 18, marginBottom: 18 }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, marginBottom: 16 }}>🏙️ City Comparison</h2>
+            <div style={{ height: 280 }}>
               <ResponsiveContainer>
-                <BarChart data={summary.buildingsPerCity}>
-                  <XAxis dataKey="city" tick={{ fill: "#e5e7eb", fontSize: 12 }} />
+                <BarChart data={cityComparison}>
+                  <XAxis dataKey="name" tick={{ fill: "#e5e7eb", fontSize: 11 }} />
                   <YAxis tick={{ fill: "#e5e7eb", fontSize: 12 }} />
                   <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }} />
                   <Legend />
-                  <Bar dataKey="buildings" fill="#38bdf8" name="Buildings" />
+                  <Bar dataKey="total" fill="#38bdf8" name="Buildings" />
+                  <Bar dataKey="infraScore" fill="#22c55e" name="Infrastructure %" />
+                  <Bar dataKey="complianceRate" fill="#a78bfa" name="Compliance %" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </section>
+          </div>
+        )}
 
-          <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ‘¥ Average Occupants per City</h2>
-            <div style={{ height: 300, marginTop: 10 }}>
-              <ResponsiveContainer>
-                <BarChart data={summary.avgOccPerCity}>
-                  <XAxis dataKey="city" tick={{ fill: "#e5e7eb", fontSize: 12 }} />
-                  <YAxis tick={{ fill: "#e5e7eb", fontSize: 12 }} />
-                  <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }} />
-                  <Legend />
-                  <Bar dataKey="avg_occupants" fill="#22c55e" name="Avg Occupants" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
+        {/* Decision Support Insights */}
+        <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 18, marginBottom: 18 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, marginBottom: 16 }}>💡 Cross-City Decision Support</h2>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {insights.priorityBuildings.length > 0 && (
+              <div style={{ padding: 14, background: "#7f1d1d", borderRadius: 10, border: "1px solid #991b1b" }}>
+                <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#fca5a5" }}>
+                  🚨 Priority: {insights.priorityBuildings.length} High-Occupancy Buildings in Poor Condition
+                </div>
+                <div style={{ fontSize: 13, color: "#fecaca", marginBottom: 8 }}>
+                  Critical buildings requiring immediate attention across all cities
+                </div>
+                <div style={{ fontSize: 12, color: "#fee2e2" }}>
+                  {insights.priorityBuildings.slice(0, 3).map(b => {
+                    const cityName = summary.cityNameById.get(b.city_id) || "Unknown";
+                    return `${b.building_name} in ${cityName} (${b.occupants} occupants)`;
+                  }).join(" • ")}
+                </div>
+              </div>
+            )}
+
+            {insights.nonCompliant.length > 0 && (
+              <div style={{ padding: 14, background: "#7c2d12", borderRadius: 10, border: "1px solid #9a3412" }}>
+                <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#fdba74" }}>
+                  ⚠️ Compliance: {insights.nonCompliant.length} Non-Compliant Buildings Across Cities
+                </div>
+                <div style={{ fontSize: 13, color: "#fed7aa" }}>
+                  Coordinate compliance enforcement across municipal boundaries
+                </div>
+              </div>
+            )}
+
+            {(insights.noElectricity.length > 0 || insights.noWater.length > 0 || insights.noSewerage.length > 0) && (
+              <div style={{ padding: 14, background: "#1e3a8a", borderRadius: 10, border: "1px solid #1e40af" }}>
+                <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#93c5fd" }}>
+                  🔌 Regional Infrastructure Gaps
+                </div>
+                <div style={{ fontSize: 13, color: "#bfdbfe" }}>
+                  {insights.noElectricity.length > 0 && `${insights.noElectricity.length} without electricity • `}
+                  {insights.noWater.length > 0 && `${insights.noWater.length} without water • `}
+                  {insights.noSewerage.length > 0 && `${insights.noSewerage.length} without sewerage`}
+                </div>
+              </div>
+            )}
+
+            {insights.agingInfra.length > 0 && (
+              <div style={{ padding: 14, background: "#713f12", borderRadius: 10, border: "1px solid #92400e" }}>
+                <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#fcd34d" }}>
+                  🏗️ Regional Modernization Needed: {insights.agingInfra.length} Buildings Over 50 Years
+                </div>
+                <div style={{ fontSize: 13, color: "#fde68a" }}>
+                  Consider coordinated renovation programs across cities
+                </div>
+              </div>
+            )}
+
+            {insights.needsAssessment.length > 0 && (
+              <div style={{ padding: 14, background: "#374151", borderRadius: 10, border: "1px solid #4b5563" }}>
+                <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#d1d5db" }}>
+                  📝 Data Quality: {insights.needsAssessment.length} Buildings Need Assessment
+                </div>
+                <div style={{ fontSize: 13, color: "#e5e7eb" }}>
+                  Deploy assessment teams to complete missing data
+                </div>
+              </div>
+            )}
+
+            {insights.priorityBuildings.length === 0 && insights.nonCompliant.length === 0 && insights.agingInfra.length === 0 && (
+              <div style={{ padding: 14, background: "#14532d", borderRadius: 10, border: "1px solid #166534" }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#86efac" }}>
+                  ✅ No Critical Cross-City Issues Detected
+                </div>
+                <div style={{ fontSize: 13, color: "#bbf7d0", marginTop: 6 }}>
+                  Regional infrastructure is in good standing. Continue monitoring.
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Classification & Condition */}
+        {/* Charts */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ—ï¸ Building Classification</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🏗️ Classification Distribution</h2>
             <div style={{ height: 280, marginTop: 10 }}>
-              <ResponsiveContainer>
-                <BarChart data={summary.classCounts}>
-                  <XAxis dataKey="classification" tick={{ fill: "#e5e7eb", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "#e5e7eb", fontSize: 12 }} />
-                  <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }} />
-                  <Legend />
-                  <Bar dataKey="count" fill="#f97316" name="Buildings" />
-                </BarChart>
-              </ResponsiveContainer>
+              {summary.classData.length > 0 ? (
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie dataKey="value" data={summary.classData} label stroke="#111827">
+                      {summary.classData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#6b7280" }}>
+                  No data
+                </div>
+              )}
             </div>
           </section>
 
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ”§ Building Condition</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🔧 Condition Overview</h2>
             <div style={{ height: 280, marginTop: 10 }}>
               {summary.conditionData.length > 0 ? (
                 <ResponsiveContainer>
@@ -452,105 +845,49 @@ export default function AdminDashboardPage() {
                 </ResponsiveContainer>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#6b7280" }}>
-                  No condition data available
+                  No data
                 </div>
               )}
             </div>
           </section>
         </div>
 
-        {/* Ownership & Compliance */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-          <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ›ï¸ Ownership Distribution</h2>
-            <div style={{ height: 280, marginTop: 10 }}>
-              {summary.ownershipData.length > 0 ? (
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie dataKey="value" data={summary.ownershipData} label stroke="#111827">
-                      {summary.ownershipData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#6b7280" }}>
-                  No ownership data available
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>âœ… Compliance Status</h2>
-            <div style={{ height: 280, marginTop: 10 }}>
-              {summary.complianceData.length > 0 ? (
-                <ResponsiveContainer>
-                  <BarChart data={summary.complianceData}>
-                    <XAxis dataKey="status" tick={{ fill: "#e5e7eb", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "#e5e7eb", fontSize: 12 }} />
-                    <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }} />
-                    <Legend />
-                    <Bar dataKey="count" fill="#a78bfa" name="Buildings" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#6b7280" }}>
-                  No compliance data available
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-
-        {/* Utility Coverage */}
-        <div style={{ marginBottom: 14 }}>
-          <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>âš¡ Utility Coverage</h2>
-            <div style={{ height: 280, marginTop: 10 }}>
+        <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14, marginBottom: 14 }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>✅ Compliance Status</h2>
+          <div style={{ height: 280, marginTop: 10 }}>
+            {summary.complianceData.length > 0 ? (
               <ResponsiveContainer>
-                <BarChart data={summary.utilityCoverage}>
-                  <XAxis dataKey="utility" tick={{ fill: "#e5e7eb", fontSize: 12 }} />
+                <BarChart data={summary.complianceData}>
+                  <XAxis dataKey="status" tick={{ fill: "#e5e7eb", fontSize: 11 }} />
                   <YAxis tick={{ fill: "#e5e7eb", fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }}
-                    formatter={(value: any, name?: string) => {
-                      if (name === "percentage") return `${value.toFixed(1)}%`;
-                      return value;
-                    }}
-                  />
+                  <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }} />
                   <Legend />
-                  <Bar dataKey="count" fill="#22c55e" name="Buildings with Utility" />
-                  <Bar dataKey="percentage" fill="#38bdf8" name="Coverage %" />
+                  <Bar dataKey="count" fill="#a78bfa" name="Buildings" />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
-          </section>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#6b7280" }}>
+                No data
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Map */}
         <div style={{ marginTop: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", overflow: "hidden" }}>
             <div style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ—ºï¸ Building Locations Across All Cities</h2>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🗺️ Regional Building Map</h2>
               <div style={{ marginTop: 6, color: "#9ca3af", fontSize: 12 }}>
-                Showing {summary.points.length.toLocaleString()} buildings with coordinates
+                Showing {summary.points.length.toLocaleString()} buildings across all cities
               </div>
             </div>
 
             <div style={{ height: 420 }}>
               <BuildingMap
-                points={summary.points.map((p) => ({
-                  ...p,
-                  latitude: p.latitude as number,
-                  longitude: p.longitude as number,
-                  occupants: p.occupants ?? undefined,
-                }))}
+                points={summary.points}
                 fallbackCenter={summary.center}
-                fallbackZoom={5}
+                fallbackZoom={10}
                 cityNameById={summary.cityNameById}
               />
             </div>
