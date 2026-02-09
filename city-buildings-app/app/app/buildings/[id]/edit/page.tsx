@@ -1,22 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-const CLASS_OPTIONS = ["residential", "commercial", "public"] as const;
-
-type BuildingRow = {
-  id: string;
-  city_id: string;
-  building_name: string;
-  street_address: string;
-  latitude: number | null;
-  longitude: number | null;
-  classification: string;
-  occupants: number | null;
-  photo_url: string | null;
-};
+const CLASS_OPTIONS = ["residential", "commercial", "public", "industrial", "mixed-use"] as const;
+const CONDITION_OPTIONS = ["Excellent", "Good", "Fair", "Poor", "Dilapidated", "Under Construction"] as const;
+const OWNERSHIP_OPTIONS = ["Private", "Government", "Municipal", "Corporate"] as const;
+const COMPLIANCE_OPTIONS = ["Compliant", "Non-compliant", "Under Review", "Not Assessed"] as const;
 
 type PlaceSuggestion = {
   place_id: number | string;
@@ -45,28 +36,50 @@ const btnPrimary: React.CSSProperties = {
   cursor: "pointer",
 };
 
-export default function CityEditBuildingPage() {
+const btnRed: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 10,
+  background: "#dc2626",
+  border: "none",
+  color: "white",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+export default function EditBuildingPage() {
   const router = useRouter();
   const params = useParams();
-  const buildingId = typeof params?.id === "string" ? params.id : "";
+  const buildingId = params?.id as string;
 
   const [cityName, setCityName] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
+  // Basic fields
   const [buildingName, setBuildingName] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
-  const [classification, setClassification] =
-    useState<(typeof CLASS_OPTIONS)[number]>("residential");
+  const [classification, setClassification] = useState<(typeof CLASS_OPTIONS)[number]>("residential");
   const [occupants, setOccupants] = useState<string>("");
   const [photoUrl, setPhotoUrl] = useState("");
 
-  const [loading, setLoading] = useState(true);
+  // NEW FIELDS
+  const [condition, setCondition] = useState<(typeof CONDITION_OPTIONS)[number] | "">("");
+  const [yearBuilt, setYearBuilt] = useState<string>("");
+  const [floors, setFloors] = useState<string>("");
+  const [ownershipType, setOwnershipType] = useState<(typeof OWNERSHIP_OPTIONS)[number] | "">("");
+  const [complianceStatus, setComplianceStatus] = useState<(typeof COMPLIANCE_OPTIONS)[number] | "">("");
+  const [hasElectricity, setHasElectricity] = useState(false);
+  const [hasWater, setHasWater] = useState(false);
+  const [hasSewerage, setHasSewerage] = useState(false);
+  const [floorAreaSqm, setFloorAreaSqm] = useState<string>("");
+
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Address suggestions state (same as Admin add)
+  // Address suggestions
   const [addrQuery, setAddrQuery] = useState("");
   const [addrLoading, setAddrLoading] = useState(false);
   const [addrError, setAddrError] = useState<string | null>(null);
@@ -76,26 +89,22 @@ export default function CityEditBuildingPage() {
 
   const addrAbortRef = useRef<AbortController | null>(null);
 
-  const headerTitle = useMemo(() => {
-    if (cityName) return `Edit building for ${cityName}`;
-    return "Edit building";
-  }, [cityName]);
-
   useEffect(() => {
-    async function load() {
+    async function loadBuilding() {
       setLoading(true);
       setError(null);
 
       if (!buildingId) {
+        setError("No building ID provided");
         setLoading(false);
-        setError("Missing building id.");
         return;
       }
 
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
+
       if (!user) {
-        router.replace("/login");
+        router.push("/login");
         return;
       }
 
@@ -106,65 +115,70 @@ export default function CityEditBuildingPage() {
         .single();
 
       if (profErr) {
-        setLoading(false);
         setError(profErr.message);
+        setLoading(false);
         return;
       }
 
       if (profile?.role !== "city") {
-        router.replace("/admin");
+        router.push("/admin");
         return;
       }
 
-      if (!profile.city_id) {
-        setLoading(false);
-        setError("Your profile has no city id.");
-        return;
+      if (profile?.city_id) {
+        const { data: city } = await supabase
+          .from("cities")
+          .select("name")
+          .eq("id", profile.city_id)
+          .single();
+        if (city) setCityName(city.name);
       }
 
-      const { data: city, error: cityErr } = await supabase
-        .from("cities")
-        .select("name")
-        .eq("id", profile.city_id)
-        .single();
-
-      if (!cityErr) setCityName(city?.name ?? "");
-
-      const { data: b, error: bErr } = await supabase
+      const { data: building, error: bErr } = await supabase
         .from("buildings")
-        .select(
-          "id, city_id, building_name, street_address, latitude, longitude, classification, occupants, photo_url"
-        )
+        .select("*")
         .eq("id", buildingId)
         .single();
 
       if (bErr) {
-        setLoading(false);
         setError(bErr.message);
+        setLoading(false);
         return;
       }
 
-      const row = b as BuildingRow;
+      if (!building) {
+        setError("Building not found");
+        setLoading(false);
+        return;
+      }
 
-      setBuildingName(row.building_name ?? "");
-      setStreetAddress(row.street_address ?? "");
-      setAddrQuery(row.street_address ?? "");
-      setLatitude(row.latitude === null ? "" : String(row.latitude));
-      setLongitude(row.longitude === null ? "" : String(row.longitude));
+      // Populate form fields
+      setBuildingName(building.building_name ?? "");
+      setStreetAddress(building.street_address ?? "");
+      setLatitude(building.latitude != null ? String(building.latitude) : "");
+      setLongitude(building.longitude != null ? String(building.longitude) : "");
+      setClassification(building.classification ?? "residential");
+      setOccupants(building.occupants != null ? String(building.occupants) : "");
+      setPhotoUrl(building.photo_url ?? "");
 
-      const c = (row.classification ?? "residential") as any;
-      setClassification(CLASS_OPTIONS.includes(c) ? c : "residential");
-
-      setOccupants(row.occupants === null ? "" : String(row.occupants));
-      setPhotoUrl(row.photo_url ?? "");
+      // NEW FIELDS
+      setCondition(building.condition ?? "");
+      setYearBuilt(building.year_built != null ? String(building.year_built) : "");
+      setFloors(building.floors != null ? String(building.floors) : "");
+      setOwnershipType(building.ownership_type ?? "");
+      setComplianceStatus(building.compliance_status ?? "");
+      setHasElectricity(building.has_electricity ?? false);
+      setHasWater(building.has_water ?? false);
+      setHasSewerage(building.has_sewerage ?? false);
+      setFloorAreaSqm(building.floor_area_sqm != null ? String(building.floor_area_sqm) : "");
 
       setLoading(false);
     }
 
-    load();
+    loadBuilding();
   }, [buildingId, router]);
 
-  // Debounced search for address suggestions using OpenStreetMap Nominatim
+  // Debounced address search
   useEffect(() => {
     const q = addrQuery.trim();
     setAddrError(null);
@@ -252,16 +266,10 @@ export default function CityEditBuildingPage() {
     );
   }
 
-  async function onSave(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSaving(true);
-
-    if (!buildingId) {
-      setSaving(false);
-      setError("Missing building id.");
-      return;
-    }
 
     const lat = latitude.trim() === "" ? null : Number(latitude);
     const lon = longitude.trim() === "" ? null : Number(longitude);
@@ -279,11 +287,32 @@ export default function CityEditBuildingPage() {
     }
     if (occ !== null && (Number.isNaN(occ) || !Number.isFinite(occ) || occ < 0)) {
       setSaving(false);
-      setError("Occupants must be a non negative number.");
+      setError("Occupants must be a non-negative number.");
       return;
     }
 
-    const { error: updErr } = await supabase
+    // Validate new fields
+    const yearBuiltNum = yearBuilt.trim() === "" ? null : Number(yearBuilt);
+    const floorsNum = floors.trim() === "" ? null : Number(floors);
+    const floorAreaNum = floorAreaSqm.trim() === "" ? null : Number(floorAreaSqm);
+
+    if (yearBuiltNum !== null && (Number.isNaN(yearBuiltNum) || yearBuiltNum < 1800 || yearBuiltNum > new Date().getFullYear() + 5)) {
+      setSaving(false);
+      setError("Year built must be between 1800 and current year + 5.");
+      return;
+    }
+    if (floorsNum !== null && (Number.isNaN(floorsNum) || floorsNum < 1)) {
+      setSaving(false);
+      setError("Number of floors must be at least 1.");
+      return;
+    }
+    if (floorAreaNum !== null && (Number.isNaN(floorAreaNum) || floorAreaNum <= 0)) {
+      setSaving(false);
+      setError("Floor area must be a positive number.");
+      return;
+    }
+
+    const { error: updateErr } = await supabase
       .from("buildings")
       .update({
         building_name: buildingName,
@@ -293,13 +322,44 @@ export default function CityEditBuildingPage() {
         classification,
         occupants: occ,
         photo_url: photoUrl.trim() === "" ? null : photoUrl.trim(),
+        // NEW FIELDS
+        condition: condition === "" ? null : condition,
+        year_built: yearBuiltNum,
+        floors: floorsNum,
+        ownership_type: ownershipType === "" ? null : ownershipType,
+        compliance_status: complianceStatus === "" ? null : complianceStatus,
+        has_electricity: hasElectricity,
+        has_water: hasWater,
+        has_sewerage: hasSewerage,
+        floor_area_sqm: floorAreaNum,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", buildingId);
 
     setSaving(false);
 
-    if (updErr) {
-      setError(updErr.message);
+    if (updateErr) {
+      setError(updateErr.message);
+      return;
+    }
+
+    router.push("/app/buildings");
+  }
+
+  async function handleDelete() {
+    if (!confirm("Are you sure you want to delete this building? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeleting(true);
+    setError(null);
+
+    const { error: delErr } = await supabase.from("buildings").delete().eq("id", buildingId);
+
+    setDeleting(false);
+
+    if (delErr) {
+      setError(delErr.message);
       return;
     }
 
@@ -325,23 +385,34 @@ export default function CityEditBuildingPage() {
             marginBottom: 18,
           }}
         >
-          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>{headerTitle}</h1>
-          <p style={{ opacity: 0.85, marginTop: 6 }}>Update the building details</p>
+          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>
+            {cityName ? `Edit building - ${cityName}` : "Edit building"}
+          </h1>
+          <p style={{ opacity: 0.85, marginTop: 6 }}>Update building information</p>
         </div>
 
         <form
-          onSubmit={onSave}
+          onSubmit={onSubmit}
           style={{
             borderRadius: 16,
             background: "#0b1220",
             border: "1px solid #1f2937",
             padding: 18,
             display: "grid",
-            gap: 12,
+            gap: 16,
           }}
         >
+          {/* Section: Basic Information */}
+          <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#38bdf8" }}>
+              📋 Basic Information
+            </h3>
+          </div>
+
           <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Building name</span>
+            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>
+              Building name <span style={{ color: "#f87171" }}>*</span>
+            </span>
             <input
               value={buildingName}
               onChange={(e) => setBuildingName(e.target.value)}
@@ -357,9 +428,10 @@ export default function CityEditBuildingPage() {
             />
           </label>
 
-          {/* Address block copied from Admin add */}
           <label style={{ display: "grid", gap: 6, position: "relative" }}>
-            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Street address</span>
+            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>
+              Street address <span style={{ color: "#f87171" }}>*</span>
+            </span>
 
             <input
               value={streetAddress}
@@ -398,13 +470,9 @@ export default function CityEditBuildingPage() {
               >
                 Fill coordinates from selected address
               </button>
-
-              <div style={{ color: "#9ca3af", fontSize: 12, alignSelf: "center" }}>
-                Pick a suggested address then click the button
-              </div>
             </div>
 
-            {showSuggestions ? (
+            {showSuggestions && (
               <div
                 style={{
                   position: "absolute",
@@ -423,46 +491,43 @@ export default function CityEditBuildingPage() {
                   <div style={{ fontSize: 12, color: "#9ca3af" }}>
                     {addrLoading ? "Searching..." : "Suggestions"}
                   </div>
-                  {addrError ? (
+                  {addrError && (
                     <div style={{ fontSize: 12, color: "#fca5a5", marginTop: 6 }}>{addrError}</div>
-                  ) : null}
+                  )}
                 </div>
 
                 {addrLoading ? null : suggestions.length === 0 ? (
                   <div style={{ padding: 10, color: "#9ca3af", fontSize: 12 }}>
-                    Type at least 3 characters to see matches
+                    Type at least 3 characters
                   </div>
                 ) : (
                   <div>
-                    {suggestions.map((s) => {
-                      const active = selectedPlace?.place_id === s.place_id;
-                      return (
-                        <button
-                          key={String(s.place_id)}
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => onPickSuggestion(s)}
-                          style={{
-                            width: "100%",
-                            textAlign: "left",
-                            padding: 10,
-                            border: "none",
-                            background: active ? "#111827" : "#0b1220",
-                            color: "white",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 800 }}>{s.display_name}</div>
-                          <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
-                            lat {s.lat}, lon {s.lon}
-                          </div>
-                        </button>
-                      );
-                    })}
+                    {suggestions.map((s) => (
+                      <button
+                        key={String(s.place_id)}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => onPickSuggestion(s)}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          padding: 10,
+                          border: "none",
+                          background: selectedPlace?.place_id === s.place_id ? "#111827" : "#0b1220",
+                          color: "white",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 800 }}>{s.display_name}</div>
+                        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
+                          lat {s.lat}, lon {s.lon}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
-            ) : null}
+            )}
           </label>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -514,38 +579,173 @@ export default function CityEditBuildingPage() {
                 opacity: geoLoading ? 0.75 : 1,
               }}
             >
-              {geoLoading ? "Getting location..." : "Use my location"}
+              {geoLoading ? "Getting location..." : "📍 Use my location"}
             </button>
+          </div>
 
-            <div style={{ color: "#9ca3af", fontSize: 12, alignSelf: "center" }}>
-              Fills latitude and longitude from your device location
-            </div>
+          {/* Building Details */}
+          <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#22c55e" }}>
+              🏗️ Building Details
+            </h3>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>
+                Classification <span style={{ color: "#f87171" }}>*</span>
+              </span>
+              <select
+                value={classification}
+                onChange={(e) => setClassification(e.target.value as any)}
+                required
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #1f2937",
+                  background: "#111827",
+                  color: "white",
+                }}
+              >
+                {CLASS_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c.charAt(0).toUpperCase() + c.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Condition</span>
+              <select
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as any)}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #1f2937",
+                  background: "#111827",
+                  color: "white",
+                }}
+              >
+                <option value="">Select condition...</option>
+                {CONDITION_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Year Built</span>
+              <input
+                value={yearBuilt}
+                onChange={(e) => setYearBuilt(e.target.value)}
+                inputMode="numeric"
+                placeholder="2020"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #1f2937",
+                  background: "#111827",
+                  color: "white",
+                }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Floors</span>
+              <input
+                value={floors}
+                onChange={(e) => setFloors(e.target.value)}
+                inputMode="numeric"
+                placeholder="5"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #1f2937",
+                  background: "#111827",
+                  color: "white",
+                }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Floor Area (m²)</span>
+              <input
+                value={floorAreaSqm}
+                onChange={(e) => setFloorAreaSqm(e.target.value)}
+                inputMode="decimal"
+                placeholder="500.5"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #1f2937",
+                  background: "#111827",
+                  color: "white",
+                }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Ownership</span>
+              <select
+                value={ownershipType}
+                onChange={(e) => setOwnershipType(e.target.value as any)}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #1f2937",
+                  background: "#111827",
+                  color: "white",
+                }}
+              >
+                <option value="">Select...</option>
+                {OWNERSHIP_OPTIONS.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Compliance</span>
+              <select
+                value={complianceStatus}
+                onChange={(e) => setComplianceStatus(e.target.value as any)}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #1f2937",
+                  background: "#111827",
+                  color: "white",
+                }}
+              >
+                <option value="">Select...</option>
+                {COMPLIANCE_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Classification</span>
-            <select
-              value={classification}
-              onChange={(e) => setClassification(e.target.value as any)}
-              style={{
-                width: "100%",
-                padding: 12,
-                borderRadius: 10,
-                border: "1px solid #1f2937",
-                background: "#111827",
-                color: "white",
-              }}
-            >
-              {CLASS_OPTIONS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Approximate occupants</span>
+            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Occupants</span>
             <input
               value={occupants}
               onChange={(e) => setOccupants(e.target.value)}
@@ -562,8 +762,87 @@ export default function CityEditBuildingPage() {
             />
           </label>
 
+          {/* Utilities */}
+          <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#f97316" }}>
+              ⚡ Utilities
+            </h3>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: 12,
+                borderRadius: 10,
+                border: "1px solid #1f2937",
+                background: "#111827",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={hasElectricity}
+                onChange={(e) => setHasElectricity(e.target.checked)}
+                style={{ width: 18, height: 18, cursor: "pointer" }}
+              />
+              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>⚡ Electricity</span>
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: 12,
+                borderRadius: 10,
+                border: "1px solid #1f2937",
+                background: "#111827",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={hasWater}
+                onChange={(e) => setHasWater(e.target.checked)}
+                style={{ width: 18, height: 18, cursor: "pointer" }}
+              />
+              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>💧 Water</span>
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: 12,
+                borderRadius: 10,
+                border: "1px solid #1f2937",
+                background: "#111827",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={hasSewerage}
+                onChange={(e) => setHasSewerage(e.target.checked)}
+                style={{ width: 18, height: 18, cursor: "pointer" }}
+              />
+              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>🚰 Sewerage</span>
+            </label>
+          </div>
+
+          {/* Photo */}
+          <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#a78bfa" }}>
+              📸 Additional
+            </h3>
+          </div>
+
           <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Photo or image URL</span>
+            <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>Photo URL</span>
             <input
               value={photoUrl}
               onChange={(e) => setPhotoUrl(e.target.value)}
@@ -579,25 +858,24 @@ export default function CityEditBuildingPage() {
             />
           </label>
 
-          {error ? <p style={{ color: "#fca5a5", margin: 0 }}>{error}</p> : null}
+          {/* Buttons */}
+          <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button type="submit" disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.8 : 1 }}>
+                {saving ? "Saving..." : "💾 Update"}
+              </button>
 
-          <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                ...btnPrimary,
-                opacity: saving ? 0.8 : 1,
-                cursor: saving ? "not-allowed" : "pointer",
-              }}
-            >
-              {saving ? "Saving..." : "Save changes"}
-            </button>
+              <button type="button" onClick={() => router.push("/app/buildings")} style={btnDark}>
+                Cancel
+              </button>
+            </div>
 
-            <button type="button" onClick={() => router.push("/app/buildings")} style={btnDark}>
-              Cancel
+            <button type="button" onClick={handleDelete} disabled={deleting} style={{ ...btnRed, opacity: deleting ? 0.8 : 1 }}>
+              {deleting ? "Deleting..." : "🗑️ Delete"}
             </button>
           </div>
+
+          {error && <p style={{ color: "#fca5a5", margin: 0 }}>{error}</p>}
         </form>
       </div>
     </main>
