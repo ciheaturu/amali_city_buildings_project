@@ -48,13 +48,13 @@ export default function BuildingMap({ points, fallbackCenter, fallbackZoom, city
               <div style={{ fontWeight: 800, marginBottom: 4 }}>{point.building_name}</div>
               <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>{point.street_address}</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", marginBottom: 4 }}>
-                📍 {cityNameById.get(point.city_id) || "Unknown City"}
+                {cityNameById.get(point.city_id) || "Unknown City"}
               </div>
               {point.occupants !== null && (
-                <div style={{ fontSize: 12 }}>👥 {point.occupants} occupants</div>
+                <div style={{ fontSize: 12 }}>{point.occupants} occupants</div>
               )}
               {point.condition && (
-                <div style={{ fontSize: 12 }}>🔧 {point.condition}</div>
+                <div style={{ fontSize: 12 }}>{point.condition}</div>
               )}
             </div>
           </Popup>

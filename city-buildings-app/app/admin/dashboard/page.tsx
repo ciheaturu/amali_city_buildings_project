@@ -418,19 +418,19 @@ export default function AdminDashboardPage() {
             marginBottom: 18,
           }}
         >
-          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>📊 Admin Analytics Dashboard</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>Admin Analytics Dashboard</h1>
           <p style={{ opacity: 0.85, marginTop: 6 }}>Cross-city insights and decision support</p>
 
           <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => router.push("/admin")} style={btnDark}>🏠 Home</button>
-              <button onClick={() => router.push("/admin/buildings")} style={btnDark}>🏢 Buildings</button>
+              <button onClick={() => router.push("/admin")} style={btnDark}>Home</button>
+              <button onClick={() => router.push("/admin/buildings")} style={btnDark}> Buildings</button>
               <button onClick={() => setShowFilters(!showFilters)} style={{ ...btnDark, background: hasActiveFilters ? "#1e40af" : btnDark.background }}>
-                🔍 Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v !== "" && v !== null).length})`}
+                Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v !== "" && v !== null).length})`}
               </button>
-              <button onClick={exportFilteredData} style={btnDark}>📊 Export CSV</button>
+              <button onClick={exportFilteredData} style={btnDark}>Export CSV</button>
             </div>
-            <button onClick={handleSignOut} style={btnDark}>🚪 Sign Out</button>
+            <button onClick={handleSignOut} style={btnDark}>Sign Out</button>
           </div>
         </div>
 
@@ -440,7 +440,7 @@ export default function AdminDashboardPage() {
         {showFilters && (
           <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 18, marginBottom: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>🔍 Filter Buildings</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Filter Buildings</h2>
               {hasActiveFilters && (
                 <button onClick={clearFilters} style={btnRed}>Clear All Filters</button>
               )}
@@ -705,7 +705,7 @@ export default function AdminDashboardPage() {
         {/* City Comparison */}
         {cityComparison.length > 1 && (
           <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 18, marginBottom: 18 }}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, marginBottom: 16 }}>🏙️ City Comparison</h2>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, marginBottom: 16 }}>City Comparison</h2>
             <div style={{ height: 280 }}>
               <ResponsiveContainer>
                 <BarChart data={cityComparison}>
@@ -724,13 +724,13 @@ export default function AdminDashboardPage() {
 
         {/* Decision Support Insights */}
         <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 18, marginBottom: 18 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, marginBottom: 16 }}>💡 Cross-City Decision Support</h2>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Cross-City Decision Support</h2>
 
           <div style={{ display: "grid", gap: 12 }}>
             {insights.priorityBuildings.length > 0 && (
               <div style={{ padding: 14, background: "#7f1d1d", borderRadius: 10, border: "1px solid #991b1b" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#fca5a5" }}>
-                  🚨 Priority: {insights.priorityBuildings.length} High-Occupancy Buildings in Poor Condition
+                  Priority: {insights.priorityBuildings.length} High-Occupancy Buildings in Poor Condition
                 </div>
                 <div style={{ fontSize: 13, color: "#fecaca", marginBottom: 8 }}>
                   Critical buildings requiring immediate attention across all cities
@@ -747,7 +747,7 @@ export default function AdminDashboardPage() {
             {insights.nonCompliant.length > 0 && (
               <div style={{ padding: 14, background: "#7c2d12", borderRadius: 10, border: "1px solid #9a3412" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#fdba74" }}>
-                  ⚠️ Compliance: {insights.nonCompliant.length} Non-Compliant Buildings Across Cities
+                  Compliance: {insights.nonCompliant.length} Non-Compliant Buildings Across Cities
                 </div>
                 <div style={{ fontSize: 13, color: "#fed7aa" }}>
                   Coordinate compliance enforcement across municipal boundaries
@@ -758,7 +758,7 @@ export default function AdminDashboardPage() {
             {(insights.noElectricity.length > 0 || insights.noWater.length > 0 || insights.noSewerage.length > 0) && (
               <div style={{ padding: 14, background: "#1e3a8a", borderRadius: 10, border: "1px solid #1e40af" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#93c5fd" }}>
-                  🔌 Regional Infrastructure Gaps
+                  Infrastructure Gaps
                 </div>
                 <div style={{ fontSize: 13, color: "#bfdbfe" }}>
                   {insights.noElectricity.length > 0 && `${insights.noElectricity.length} without electricity • `}
@@ -771,7 +771,7 @@ export default function AdminDashboardPage() {
             {insights.agingInfra.length > 0 && (
               <div style={{ padding: 14, background: "#713f12", borderRadius: 10, border: "1px solid #92400e" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#fcd34d" }}>
-                  🏗️ Regional Modernization Needed: {insights.agingInfra.length} Buildings Over 50 Years
+                  Modernization Needed: {insights.agingInfra.length} Buildings Over 50 Years
                 </div>
                 <div style={{ fontSize: 13, color: "#fde68a" }}>
                   Consider coordinated renovation programs across cities
@@ -782,7 +782,7 @@ export default function AdminDashboardPage() {
             {insights.needsAssessment.length > 0 && (
               <div style={{ padding: 14, background: "#374151", borderRadius: 10, border: "1px solid #4b5563" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#d1d5db" }}>
-                  📝 Data Quality: {insights.needsAssessment.length} Buildings Need Assessment
+                  Data Quality: {insights.needsAssessment.length} Buildings Need Assessment
                 </div>
                 <div style={{ fontSize: 13, color: "#e5e7eb" }}>
                   Deploy assessment teams to complete missing data
@@ -793,7 +793,7 @@ export default function AdminDashboardPage() {
             {insights.priorityBuildings.length === 0 && insights.nonCompliant.length === 0 && insights.agingInfra.length === 0 && (
               <div style={{ padding: 14, background: "#14532d", borderRadius: 10, border: "1px solid #166534" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#86efac" }}>
-                  ✅ No Critical Cross-City Issues Detected
+                  No Critical Cross-City Issues Detected
                 </div>
                 <div style={{ fontSize: 13, color: "#bbf7d0", marginTop: 6 }}>
                   Regional infrastructure is in good standing. Continue monitoring.
@@ -806,7 +806,7 @@ export default function AdminDashboardPage() {
         {/* Charts */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🏗️ Classification Distribution</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Classification Distribution</h2>
             <div style={{ height: 280, marginTop: 10 }}>
               {summary.classData.length > 0 ? (
                 <ResponsiveContainer>
@@ -853,7 +853,7 @@ export default function AdminDashboardPage() {
         </div>
 
         <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14, marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>✅ Compliance Status</h2>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Compliance Status</h2>
           <div style={{ height: 280, marginTop: 10 }}>
             {summary.complianceData.length > 0 ? (
               <ResponsiveContainer>
@@ -877,7 +877,7 @@ export default function AdminDashboardPage() {
         <div style={{ marginTop: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", overflow: "hidden" }}>
             <div style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🗺️ Regional Building Map</h2>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Building Map</h2>
               <div style={{ marginTop: 6, color: "#9ca3af", fontSize: 12 }}>
                 Showing {summary.points.length.toLocaleString()} buildings across all cities
               </div>

@@ -17,12 +17,24 @@ export async function POST(req: Request) {
       auth: { persistSession: false },
     });
 
-    const { cityName, email, password } = await req.json();
+    const { cityId, email, password } = await req.json();
 
-    if (!cityName || !email || !password) {
+    if (!cityId || !email || !password) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
+    // Verify city exists
+    const { data: city, error: cityCheckErr } = await supabaseAdmin
+      .from("cities")
+      .select("id")
+      .eq("id", cityId)
+      .single();
+
+    if (cityCheckErr || !city) {
+      return NextResponse.json({ error: "Invalid city selected" }, { status: 400 });
+    }
+
+    // Create user
     const { data: createdUser, error: userErr } =
       await supabaseAdmin.auth.admin.createUser({
         email,
@@ -39,22 +51,10 @@ export async function POST(req: Request) {
 
     const userId = createdUser.user.id;
 
-    const { data: city, error: cityErr } = await supabaseAdmin
-      .from("cities")
-      .insert({ name: cityName })
-      .select("id")
-      .single();
-
-    if (cityErr || !city) {
-      return NextResponse.json(
-        { error: cityErr?.message ?? "Failed to create city" },
-        { status: 400 }
-      );
-    }
-
+    // Create profile linked to selected city
     const { error: profErr } = await supabaseAdmin.from("profiles").insert({
       user_id: userId,
-      city_id: city.id,
+      city_id: cityId,
       role: "city",
     });
 

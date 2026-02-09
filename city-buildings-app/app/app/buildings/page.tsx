@@ -93,7 +93,7 @@ export default function BuildingsPage() {
                 cursor: "pointer",
               }}
             >
-              ➕ Add Building
+              Add Building
             </button>
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function BuildingsPage() {
               border: "1px solid #1f2937",
             }}
           >
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🏗️</div>
+            <div style={{ fontSize: 48, marginBottom: 16 }}></div>
             <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>No buildings yet</h2>
             <p style={{ color: "#9ca3af", marginBottom: 24 }}>
               Start by adding your first building
@@ -125,7 +125,7 @@ export default function BuildingsPage() {
                 cursor: "pointer",
               }}
             >
-              ➕ Add Your First Building
+              Add Your First Building
             </button>
           </div>
         ) : (
@@ -144,9 +144,9 @@ export default function BuildingsPage() {
                   {building.address || "No address"}
                 </h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, color: "#9ca3af", fontSize: 14 }}>
-                  <div>📍 {building.location_description || "No location"}</div>
-                  <div>👥 {building.occupants || 0} occupants</div>
-                  {building.year_built && <div>📅 Built {building.year_built}</div>}
+                  <div>{building.location_description || "No location"}</div>
+                  <div>{building.occupants || 0} occupants</div>
+                  {building.year_built && <div>Built {building.year_built}</div>}
                 </div>
               </div>
             ))}

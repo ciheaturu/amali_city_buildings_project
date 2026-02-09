@@ -1,16 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+
+type City = {
+  id: string;
+  name: string;
+};
 
 export default function SignupPage() {
   const router = useRouter();
-  const [cityName, setCityName] = useState("");
+  const [cities, setCities] = useState<City[]>([]);
+  const [selectedCityId, setSelectedCityId] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(true);
+
+  // Fetch cities on component mount
+  useEffect(() => {
+    async function fetchCities() {
+      setLoadingCities(true);
+      const { data, error } = await supabase
+        .from("cities")
+        .select("id, name")
+        .order("name");
+
+      if (error) {
+        setError("Failed to load cities");
+      } else {
+        setCities(data || []);
+      }
+      setLoadingCities(false);
+    }
+
+    fetchCities();
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +48,7 @@ export default function SignupPage() {
     const res = await fetch("/api/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cityName, email, password }),
+      body: JSON.stringify({ cityId: selectedCityId, email, password }),
     });
 
     setLoading(false);
@@ -48,7 +76,7 @@ export default function SignupPage() {
         >
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>City sign up</h1>
           <p style={{ opacity: 0.85, marginTop: 6 }}>
-            Create a city account to capture and manage buildings
+            Create an account to manage your city's buildings
           </p>
         </div>
 
@@ -66,21 +94,35 @@ export default function SignupPage() {
         >
           <label style={{ display: "grid", gap: 6 }}>
             <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>
-              City name
+              Select Your City
             </span>
-            <input
-              value={cityName}
-              onChange={(e) => setCityName(e.target.value)}
-              required
-              style={{
-                width: "100%",
-                padding: 12,
-                borderRadius: 10,
-                border: "1px solid #1f2937",
-                background: "#111827",
-                color: "white",
-              }}
-            />
+            {loadingCities ? (
+              <div style={{ padding: 12, color: "#9ca3af", fontSize: 14 }}>
+                Loading cities...
+              </div>
+            ) : (
+              <select
+                value={selectedCityId}
+                onChange={(e) => setSelectedCityId(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #1f2937",
+                  background: "#111827",
+                  color: "white",
+                  fontSize: 14,
+                }}
+              >
+                <option value="">-- Choose a city --</option>
+                {cities.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
@@ -125,14 +167,14 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || loadingCities}
             style={{
               padding: "10px 12px",
               borderRadius: 10,
               background: "#38bdf8",
               border: "none",
               fontWeight: 900,
-              cursor: loading ? "not-allowed" : "pointer",
+              cursor: loading || loadingCities ? "not-allowed" : "pointer",
               marginTop: 6,
             }}
           >
@@ -142,7 +184,7 @@ export default function SignupPage() {
           {error ? <p style={{ color: "#fca5a5", margin: 0 }}>{error}</p> : null}
 
           <p style={{ margin: 0, color: "#9ca3af", fontSize: 12 }}>
-            Already have an account{" "}
+            Already have an account?{" "}
             <a href="/login" style={{ color: "#38bdf8", fontWeight: 800 }}>
               Log in
             </a>

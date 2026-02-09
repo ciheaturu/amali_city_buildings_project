@@ -621,14 +621,14 @@ export default function AdminEditBuildingPage() {
                 opacity: geoLoading ? 0.75 : 1,
               }}
             >
-              {geoLoading ? "Getting location..." : "📍 Use my location"}
+              {geoLoading ? "Getting location..." : "Use my location"}
             </button>
           </div>
 
           {/* Building Details */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#22c55e" }}>
-              🏗️ Building Details
+              Building Details
             </h3>
           </div>
 
@@ -807,7 +807,7 @@ export default function AdminEditBuildingPage() {
           {/* Utilities */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#f97316" }}>
-              ⚡ Utilities
+              Utilities
             </h3>
           </div>
 
@@ -830,7 +830,7 @@ export default function AdminEditBuildingPage() {
                 onChange={(e) => setHasElectricity(e.target.checked)}
                 style={{ width: 18, height: 18, cursor: "pointer" }}
               />
-              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>⚡ Electricity</span>
+              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>Electricity</span>
             </label>
 
             <label
@@ -851,7 +851,7 @@ export default function AdminEditBuildingPage() {
                 onChange={(e) => setHasWater(e.target.checked)}
                 style={{ width: 18, height: 18, cursor: "pointer" }}
               />
-              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>💧 Water</span>
+              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>Water</span>
             </label>
 
             <label
@@ -872,7 +872,7 @@ export default function AdminEditBuildingPage() {
                 onChange={(e) => setHasSewerage(e.target.checked)}
                 style={{ width: 18, height: 18, cursor: "pointer" }}
               />
-              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>🚰 Sewerage</span>
+              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>Sewerage</span>
             </label>
           </div>
 
@@ -904,7 +904,7 @@ export default function AdminEditBuildingPage() {
           <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap", justifyContent: "space-between" }}>
             <div style={{ display: "flex", gap: 12 }}>
               <button type="submit" disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.8 : 1 }}>
-                {saving ? "Saving..." : "💾 Update Building"}
+                {saving ? "Saving..." : "Update Building"}
               </button>
 
               <button type="button" onClick={() => router.push("/admin/buildings")} style={btnDark}>
@@ -913,7 +913,7 @@ export default function AdminEditBuildingPage() {
             </div>
 
             <button type="button" onClick={handleDelete} disabled={deleting} style={{ ...btnRed, opacity: deleting ? 0.8 : 1 }}>
-              {deleting ? "Deleting..." : "🗑️ Delete Building"}
+              {deleting ? "Deleting..." : "Delete Building"}
             </button>
           </div>
 

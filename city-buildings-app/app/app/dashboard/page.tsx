@@ -395,17 +395,17 @@ export default function CityDashboardPage() {
             marginBottom: 18,
           }}
         >
-          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>📊 Analytics Dashboard - {cityName}</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>Analytics Dashboard - {cityName}</h1>
           <p style={{ opacity: 0.85, marginTop: 6 }}>Decision support and data insights</p>
 
           <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => router.push("/app")} style={btnDark}>🏠 Home</button>
-              <button onClick={() => router.push("/app/buildings")} style={btnDark}>🏢 Buildings</button>
+              <button onClick={() => router.push("/app")} style={btnDark}>Home</button>
+              <button onClick={() => router.push("/app/buildings")} style={btnDark}> Buildings</button>
               <button onClick={() => setShowFilters(!showFilters)} style={{ ...btnDark, background: hasActiveFilters ? "#1e40af" : btnDark.background }}>
-                🔍 Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v !== "" && v !== null).length})`}
+                Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v !== "" && v !== null).length})`}
               </button>
-              <button onClick={exportFilteredData} style={btnDark}>📊 Export CSV</button>
+              <button onClick={exportFilteredData} style={btnDark}>Export CSV</button>
             </div>
           </div>
         </div>
@@ -416,7 +416,7 @@ export default function CityDashboardPage() {
         {showFilters && (
           <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 18, marginBottom: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>🔍 Filter Buildings</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Filter Buildings</h2>
               {hasActiveFilters && (
                 <button onClick={clearFilters} style={btnRed}>Clear All Filters</button>
               )}
@@ -658,13 +658,13 @@ export default function CityDashboardPage() {
 
         {/* Decision Support Insights */}
         <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 18, marginBottom: 18 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, marginBottom: 16 }}>💡 Decision Support Insights</h2>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Decision Support Insights</h2>
 
           <div style={{ display: "grid", gap: 12 }}>
             {insights.priorityBuildings.length > 0 && (
               <div style={{ padding: 14, background: "#7f1d1d", borderRadius: 10, border: "1px solid #991b1b" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#fca5a5" }}>
-                  🚨 Priority: {insights.priorityBuildings.length} High-Occupancy Buildings in Poor Condition
+                  Priority: {insights.priorityBuildings.length} High-Occupancy Buildings in Poor Condition
                 </div>
                 <div style={{ fontSize: 13, color: "#fecaca", marginBottom: 8 }}>
                   These buildings have poor/dilapidated condition and high occupancy (&gt;50 people). Immediate attention required.
@@ -678,7 +678,7 @@ export default function CityDashboardPage() {
             {insights.nonCompliant.length > 0 && (
               <div style={{ padding: 14, background: "#7c2d12", borderRadius: 10, border: "1px solid #9a3412" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#fdba74" }}>
-                  ⚠️ Compliance: {insights.nonCompliant.length} Non-Compliant Buildings
+                  Compliance: {insights.nonCompliant.length} Non-Compliant Buildings
                 </div>
                 <div style={{ fontSize: 13, color: "#fed7aa" }}>
                   Review and address compliance issues to meet regulatory requirements.
@@ -702,7 +702,7 @@ export default function CityDashboardPage() {
             {insights.agingInfra.length > 0 && (
               <div style={{ padding: 14, background: "#713f12", borderRadius: 10, border: "1px solid #92400e" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#fcd34d" }}>
-                  🏗️ Aging Infrastructure: {insights.agingInfra.length} Buildings Over 50 Years Old
+                  Aging Infrastructure: {insights.agingInfra.length} Buildings Over 50 Years Old
                 </div>
                 <div style={{ fontSize: 13, color: "#fde68a" }}>
                   Consider renovation or modernization programs for buildings built before 1975.
@@ -713,7 +713,7 @@ export default function CityDashboardPage() {
             {insights.needsAssessment.length > 0 && (
               <div style={{ padding: 14, background: "#374151", borderRadius: 10, border: "1px solid #4b5563" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: "#d1d5db" }}>
-                  📝 Data Gaps: {insights.needsAssessment.length} Buildings Need Assessment
+                  Data Gaps: {insights.needsAssessment.length} Buildings Need Assessment
                 </div>
                 <div style={{ fontSize: 13, color: "#e5e7eb" }}>
                   Update missing condition or compliance data for better decision-making.
@@ -724,7 +724,7 @@ export default function CityDashboardPage() {
             {insights.priorityBuildings.length === 0 && insights.nonCompliant.length === 0 && insights.agingInfra.length === 0 && (
               <div style={{ padding: 14, background: "#14532d", borderRadius: 10, border: "1px solid #166534" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#86efac" }}>
-                  ✅ No Critical Issues Detected
+                  No Critical Issues Detected
                 </div>
                 <div style={{ fontSize: 13, color: "#bbf7d0", marginTop: 6 }}>
                   Current filtered buildings are in good standing. Continue regular monitoring.
@@ -737,7 +737,7 @@ export default function CityDashboardPage() {
         {/* Charts */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🏗️ Classification</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Classification</h2>
             <div style={{ height: 280, marginTop: 10 }}>
               {summary.classData.length > 0 ? (
                 <ResponsiveContainer>
@@ -784,7 +784,7 @@ export default function CityDashboardPage() {
         </div>
 
         <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14, marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>✅ Compliance Status</h2>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Compliance Status</h2>
           <div style={{ height: 280, marginTop: 10 }}>
             {summary.complianceData.length > 0 ? (
               <ResponsiveContainer>
@@ -808,7 +808,7 @@ export default function CityDashboardPage() {
         <div style={{ marginTop: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", overflow: "hidden" }}>
             <div style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🗺️ Building Locations</h2>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Building Locations</h2>
               <div style={{ marginTop: 6, color: "#9ca3af", fontSize: 12 }}>
                 Showing {summary.points.length.toLocaleString()} buildings with coordinates
               </div>

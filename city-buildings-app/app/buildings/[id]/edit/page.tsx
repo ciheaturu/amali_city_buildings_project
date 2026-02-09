@@ -405,7 +405,7 @@ export default function EditBuildingPage() {
           {/* Section: Basic Information */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#38bdf8" }}>
-              📋 Basic Information
+              Basic Information
             </h3>
           </div>
 
@@ -579,14 +579,14 @@ export default function EditBuildingPage() {
                 opacity: geoLoading ? 0.75 : 1,
               }}
             >
-              {geoLoading ? "Getting location..." : "📍 Use my location"}
+              {geoLoading ? "Getting location..." : "Use my location"}
             </button>
           </div>
 
           {/* Building Details */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#22c55e" }}>
-              🏗️ Building Details
+              Building Details
             </h3>
           </div>
 
@@ -765,7 +765,7 @@ export default function EditBuildingPage() {
           {/* Utilities */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#f97316" }}>
-              ⚡ Utilities
+              Utilities
             </h3>
           </div>
 
@@ -788,7 +788,7 @@ export default function EditBuildingPage() {
                 onChange={(e) => setHasElectricity(e.target.checked)}
                 style={{ width: 18, height: 18, cursor: "pointer" }}
               />
-              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>⚡ Electricity</span>
+              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>Electricity</span>
             </label>
 
             <label
@@ -809,7 +809,7 @@ export default function EditBuildingPage() {
                 onChange={(e) => setHasWater(e.target.checked)}
                 style={{ width: 18, height: 18, cursor: "pointer" }}
               />
-              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>💧 Water</span>
+              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>Water</span>
             </label>
 
             <label
@@ -830,7 +830,7 @@ export default function EditBuildingPage() {
                 onChange={(e) => setHasSewerage(e.target.checked)}
                 style={{ width: 18, height: 18, cursor: "pointer" }}
               />
-              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>🚰 Sewerage</span>
+              <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>Sewerage</span>
             </label>
           </div>
 
@@ -862,7 +862,7 @@ export default function EditBuildingPage() {
           <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap", justifyContent: "space-between" }}>
             <div style={{ display: "flex", gap: 12 }}>
               <button type="submit" disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.8 : 1 }}>
-                {saving ? "Saving..." : "💾 Update"}
+                {saving ? "Saving..." : "Update"}
               </button>
 
               <button type="button" onClick={() => router.push("/app/buildings")} style={btnDark}>
@@ -871,7 +871,7 @@ export default function EditBuildingPage() {
             </div>
 
             <button type="button" onClick={handleDelete} disabled={deleting} style={{ ...btnRed, opacity: deleting ? 0.8 : 1 }}>
-              {deleting ? "Deleting..." : "🗑️ Delete"}
+              {deleting ? "Deleting..." : "Delete"}
             </button>
           </div>
 

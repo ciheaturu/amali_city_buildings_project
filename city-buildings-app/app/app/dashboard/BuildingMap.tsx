@@ -47,10 +47,10 @@ export default function BuildingMap({ points, fallbackCenter, fallbackZoom }: Bu
               <div style={{ fontWeight: 800, marginBottom: 4 }}>{point.building_name}</div>
               <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>{point.street_address}</div>
               {point.occupants !== null && (
-                <div style={{ fontSize: 12 }}>👥 {point.occupants} occupants</div>
+                <div style={{ fontSize: 12 }}>{point.occupants} occupants</div>
               )}
               {point.condition && (
-                <div style={{ fontSize: 12 }}>🔧 {point.condition}</div>
+                <div style={{ fontSize: 12 }}>{point.condition}</div>
               )}
             </div>
           </Popup>
