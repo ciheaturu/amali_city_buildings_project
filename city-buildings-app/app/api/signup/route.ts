@@ -23,11 +23,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // Verify city exists
+    // Verify city exists using UUID
     const { data: city, error: cityCheckErr } = await supabaseAdmin
       .from("cities")
-      .select("id")
-      .eq("id", cityId)
+      .select("uuid")
+      .eq("uuid", cityId)
       .single();
 
     if (cityCheckErr || !city) {
@@ -51,10 +51,10 @@ export async function POST(req: Request) {
 
     const userId = createdUser.user.id;
 
-    // Create profile linked to selected city
+    // Create profile linked to selected city (UUID)
     const { error: profErr } = await supabaseAdmin.from("profiles").insert({
       user_id: userId,
-      city_id: cityId,
+      city_id: cityId, // UUID
       role: "city",
     });
 

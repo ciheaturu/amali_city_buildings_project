@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type City = {
-  id: string;
+  uuid: string;
   name: string;
 };
 
@@ -24,9 +24,10 @@ export default function SignupPage() {
   useEffect(() => {
     async function fetchCities() {
       setLoadingCities(true);
+
       const { data, error } = await supabase
         .from("cities")
-        .select("id, name")
+        .select("uuid, name")
         .order("name");
 
       if (error) {
@@ -34,6 +35,7 @@ export default function SignupPage() {
       } else {
         setCities(data || []);
       }
+
       setLoadingCities(false);
     }
 
@@ -48,7 +50,11 @@ export default function SignupPage() {
     const res = await fetch("/api/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cityId: selectedCityId, email, password }),
+      body: JSON.stringify({
+        cityId: selectedCityId,
+        email,
+        password,
+      }),
     });
 
     setLoading(false);
@@ -96,6 +102,7 @@ export default function SignupPage() {
             <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600 }}>
               Select Your City
             </span>
+
             {loadingCities ? (
               <div style={{ padding: 12, color: "#9ca3af", fontSize: 14 }}>
                 Loading cities...
@@ -117,7 +124,7 @@ export default function SignupPage() {
               >
                 <option value="">-- Choose a city --</option>
                 {cities.map((city) => (
-                  <option key={city.id} value={city.id}>
+                  <option key={city.uuid} value={city.uuid}>
                     {city.name}
                   </option>
                 ))}
