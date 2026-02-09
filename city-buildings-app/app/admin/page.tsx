@@ -11,32 +11,6 @@ type AdminStats = {
   avgInfrastructureScore: number;
 };
 
-const btnPrimary: React.CSSProperties = {
-  padding: "12px 24px",
-  borderRadius: 10,
-  background: "#38bdf8",
-  border: "none",
-  color: "#0b1220",
-  fontWeight: 900,
-  cursor: "pointer",
-  textDecoration: "none",
-  display: "inline-block",
-  transition: "all 0.2s",
-};
-
-const btnSecondary: React.CSSProperties = {
-  padding: "12px 24px",
-  borderRadius: 10,
-  background: "#111827",
-  border: "1px solid #1f2937",
-  color: "white",
-  fontWeight: 800,
-  cursor: "pointer",
-  textDecoration: "none",
-  display: "inline-block",
-  transition: "all 0.2s",
-};
-
 function StatCard({ title, value, icon, color }: { title: string; value: string; icon: string; color: string }) {
   return (
     <div
@@ -273,13 +247,17 @@ export default function AdminHomePage() {
               gap: 16,
             }}
           >
-            <button
+            <div
               onClick={() => router.push("/admin/buildings/new")}
               style={{
-                ...btnPrimary,
                 textAlign: "left",
                 padding: 20,
-                width: "100%",
+                borderRadius: 10,
+                background: "#38bdf8",
+                border: "none",
+                color: "#0b1220",
+                cursor: "pointer",
+                transition: "all 0.2s",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-2px)";
@@ -295,15 +273,19 @@ export default function AdminHomePage() {
               <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
                 Create building for any city
               </div>
-            </button>
+            </div>
 
-            <button
+            <div
               onClick={() => router.push("/admin/buildings")}
               style={{
-                ...btnSecondary,
                 textAlign: "left",
                 padding: 20,
-                width: "100%",
+                borderRadius: 10,
+                background: "#111827",
+                border: "1px solid #1f2937",
+                color: "white",
+                cursor: "pointer",
+                transition: "all 0.2s",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#1f2937";
@@ -319,15 +301,19 @@ export default function AdminHomePage() {
               <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
                 View, edit, and export all buildings
               </div>
-            </button>
+            </div>
 
-            <button
+            <div
               onClick={() => router.push("/admin/dashboard")}
               style={{
-                ...btnSecondary,
                 textAlign: "left",
                 padding: 20,
-                width: "100%",
+                borderRadius: 10,
+                background: "#111827",
+                border: "1px solid #1f2937",
+                color: "white",
+                cursor: "pointer",
+                transition: "all 0.2s",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#1f2937";
@@ -343,7 +329,7 @@ export default function AdminHomePage() {
               <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
                 Cross-city insights and charts
               </div>
-            </button>
+            </div>
           </div>
         </div>
 
