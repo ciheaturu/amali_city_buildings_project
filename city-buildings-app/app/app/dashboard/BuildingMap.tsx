@@ -16,7 +16,6 @@ type BuildingPoint = {
   id: string;
   building_name: string;
   street_address: string;
-  city_id: string;
   latitude: number;
   longitude: number;
   occupants: number | null;
@@ -30,7 +29,7 @@ type BuildingMapProps = {
   cityNameById: Map<string, string>;
 };
 
-export default function BuildingMap({ points, fallbackCenter, fallbackZoom, cityNameById }: BuildingMapProps) {
+export default function BuildingMap({ points, fallbackCenter, fallbackZoom }: BuildingMapProps) {
   return (
     <MapContainer
       center={fallbackCenter}
@@ -48,9 +47,6 @@ export default function BuildingMap({ points, fallbackCenter, fallbackZoom, city
             <div style={{ minWidth: 200 }}>
               <div style={{ fontWeight: 800, marginBottom: 4 }}>{point.building_name}</div>
               <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>{point.street_address}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", marginBottom: 4 }}>
-                📍 {cityNameById.get(point.city_id) || "Unknown City"}
-              </div>
               {point.occupants !== null && (
                 <div style={{ fontSize: 12 }}>👥 {point.occupants} occupants</div>
               )}
