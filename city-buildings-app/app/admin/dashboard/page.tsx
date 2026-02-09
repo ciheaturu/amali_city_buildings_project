@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -345,17 +345,17 @@ export default function AdminDashboardPage() {
             marginBottom: 18,
           }}
         >
-          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>🏛️ Admin Dashboard</h1>
-          <p style={{ opacity: 0.85, marginTop: 6 }}>Cross-city overview and analytics • Signed in as {adminEmail}</p>
+          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>ðŸ›ï¸ Admin Dashboard</h1>
+          <p style={{ opacity: 0.85, marginTop: 6 }}>Cross-city overview and analytics â€¢ Signed in as {adminEmail}</p>
 
           <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => router.push("/admin")} style={btnDark}>🏠 Home</button>
-              <button onClick={() => router.push("/admin/buildings")} style={btnDark}>🏢 Buildings</button>
-              <button onClick={exportAllCsv} style={btnDark}>📊 Export CSV</button>
-              <button onClick={() => router.push("/admin/buildings/new")} style={btnGreen}>➕ Add Building</button>
+              <button onClick={() => router.push("/admin")} style={btnDark}>ðŸ  Home</button>
+              <button onClick={() => router.push("/admin/buildings")} style={btnDark}>ðŸ¢ Buildings</button>
+              <button onClick={exportAllCsv} style={btnDark}>ðŸ“Š Export CSV</button>
+              <button onClick={() => router.push("/admin/buildings/new")} style={btnGreen}>âž• Add Building</button>
             </div>
-            <button onClick={signOut} style={btnDark}>🚪 Sign Out</button>
+            <button onClick={signOut} style={btnDark}>ðŸšª Sign Out</button>
           </div>
         </div>
 
@@ -380,7 +380,7 @@ export default function AdminDashboardPage() {
           />
           <Card 
             title="Total Floor Area" 
-            value={`${(summary.totalFloorArea / 1000).toFixed(1)}k m²`} 
+            value={`${(summary.totalFloorArea / 1000).toFixed(1)}k mÂ²`} 
             accent="#facc15"
           />
         </div>
@@ -388,7 +388,7 @@ export default function AdminDashboardPage() {
         {/* Buildings Per City */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>📊 Buildings per City</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ“Š Buildings per City</h2>
             <div style={{ height: 300, marginTop: 10 }}>
               <ResponsiveContainer>
                 <BarChart data={summary.buildingsPerCity}>
@@ -403,7 +403,7 @@ export default function AdminDashboardPage() {
           </section>
 
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>👥 Average Occupants per City</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ‘¥ Average Occupants per City</h2>
             <div style={{ height: 300, marginTop: 10 }}>
               <ResponsiveContainer>
                 <BarChart data={summary.avgOccPerCity}>
@@ -421,7 +421,7 @@ export default function AdminDashboardPage() {
         {/* Classification & Condition */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🏗️ Building Classification</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ—ï¸ Building Classification</h2>
             <div style={{ height: 280, marginTop: 10 }}>
               <ResponsiveContainer>
                 <BarChart data={summary.classCounts}>
@@ -436,7 +436,7 @@ export default function AdminDashboardPage() {
           </section>
 
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🔧 Building Condition</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ”§ Building Condition</h2>
             <div style={{ height: 280, marginTop: 10 }}>
               {summary.conditionData.length > 0 ? (
                 <ResponsiveContainer>
@@ -462,7 +462,7 @@ export default function AdminDashboardPage() {
         {/* Ownership & Compliance */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🏛️ Ownership Distribution</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ›ï¸ Ownership Distribution</h2>
             <div style={{ height: 280, marginTop: 10 }}>
               {summary.ownershipData.length > 0 ? (
                 <ResponsiveContainer>
@@ -485,7 +485,7 @@ export default function AdminDashboardPage() {
           </section>
 
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>✅ Compliance Status</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>âœ… Compliance Status</h2>
             <div style={{ height: 280, marginTop: 10 }}>
               {summary.complianceData.length > 0 ? (
                 <ResponsiveContainer>
@@ -509,7 +509,7 @@ export default function AdminDashboardPage() {
         {/* Utility Coverage */}
         <div style={{ marginBottom: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>⚡ Utility Coverage</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>âš¡ Utility Coverage</h2>
             <div style={{ height: 280, marginTop: 10 }}>
               <ResponsiveContainer>
                 <BarChart data={summary.utilityCoverage}>
@@ -517,7 +517,7 @@ export default function AdminDashboardPage() {
                   <YAxis tick={{ fill: "#e5e7eb", fontSize: 12 }} />
                   <Tooltip 
                     contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8 }}
-                    formatter={(value: any, name: string) => {
+                    formatter={(value: any, name?: string) => {
                       if (name === "percentage") return `${value.toFixed(1)}%`;
                       return value;
                     }}
@@ -535,7 +535,7 @@ export default function AdminDashboardPage() {
         <div style={{ marginTop: 14 }}>
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", overflow: "hidden" }}>
             <div style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🗺️ Building Locations Across All Cities</h2>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>ðŸ—ºï¸ Building Locations Across All Cities</h2>
               <div style={{ marginTop: 6, color: "#9ca3af", fontSize: 12 }}>
                 Showing {summary.points.length.toLocaleString()} buildings with coordinates
               </div>
