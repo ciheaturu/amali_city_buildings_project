@@ -3,7 +3,6 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import type { LatLngExpression } from "leaflet";
 
 // -----------------------------
 // Fix default Leaflet marker icon
@@ -36,7 +35,7 @@ type MapPoint = {
 
 type Props = {
   points: MapPoint[];
-  fallbackCenter: LatLngExpression;
+  fallbackCenter: [number, number];
   fallbackZoom: number;
   cityNameById: Map<string, string>;
 };
