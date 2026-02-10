@@ -278,8 +278,13 @@ export default function AdminDashboardPage() {
     const total = filteredBuildings.length;
     const totalOccupants = filteredBuildings.reduce((s, b) => s + (b.occupants ?? 0), 0);
 
+    // Count unique cities with buildings in filtered set
+    const uniqueCityIds = new Set(filteredBuildings.map(b => b.city_id));
+    const citiesWithBuildings = uniqueCityIds.size;
+
     const currentYear = new Date().getFullYear();
     const withAge = filteredBuildings.filter((b) => b.year_built);
+    const buildingsWithAge = withAge.length;
     const avgAge = withAge.length
       ? withAge.reduce((s, b) => s + (currentYear - (b.year_built ?? currentYear)), 0) / withAge.length
       : 0;
@@ -324,6 +329,8 @@ export default function AdminDashboardPage() {
       total,
       totalOccupants,
       avgAge,
+      buildingsWithAge,
+      citiesWithBuildings,
       infraScore,
       classData,
       conditionData,
@@ -692,13 +699,29 @@ export default function AdminDashboardPage() {
 
         {/* Key Metrics */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 18 }}>
-          <Card title="Total Buildings" value={`${summary.total}`} accent="#38bdf8" subtitle={`Across ${cities.length} cities`} />
-          <Card title="Total Occupants" value={`${summary.totalOccupants.toLocaleString()}`} accent="#22c55e" />
-          <Card title="Avg Building Age" value={`${summary.avgAge.toFixed(0)} yrs`} accent="#f97316" />
+          <Card 
+            title="Total Buildings" 
+            value={`${summary.total}`} 
+            accent="#38bdf8" 
+            subtitle={`Across ${summary.citiesWithBuildings} ${summary.citiesWithBuildings === 1 ? 'city' : 'cities'} in filtered dataset`} 
+          />
+          <Card 
+            title="Total Occupants" 
+            value={`${summary.totalOccupants.toLocaleString()}`} 
+            accent="#22c55e" 
+            subtitle="Total people across all filtered buildings"
+          />
+          <Card 
+            title="Average Building Age" 
+            value={`${summary.avgAge.toFixed(0)} yrs`} 
+            accent="#f97316" 
+            subtitle={`Based on ${summary.buildingsWithAge} buildings with age data`}
+          />
           <Card
             title="Infrastructure Score"
             value={`${summary.infraScore.toFixed(0)}%`}
             accent={summary.infraScore > 70 ? "#22c55e" : summary.infraScore > 40 ? "#f97316" : "#e11d48"}
+            subtitle="Avg coverage of electricity, water & sewerage"
           />
         </div>
 
@@ -879,7 +902,7 @@ export default function AdminDashboardPage() {
             <div style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
               <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Building Map</h2>
               <div style={{ marginTop: 6, color: "#9ca3af", fontSize: 12 }}>
-                Showing {summary.points.length.toLocaleString()} buildings across all cities
+                Showing {summary.points.length.toLocaleString()} buildings with coordinates from {summary.citiesWithBuildings} {summary.citiesWithBuildings === 1 ? 'city' : 'cities'}
               </div>
             </div>
 

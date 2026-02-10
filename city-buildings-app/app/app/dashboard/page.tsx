@@ -810,7 +810,7 @@ export default function CityDashboardPage() {
             <div style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
               <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Building Locations</h2>
               <div style={{ marginTop: 6, color: "#9ca3af", fontSize: 12 }}>
-                Showing {summary.points.length.toLocaleString()} buildings with coordinates
+                Showing {summary.points.length.toLocaleString()} of {summary.total} filtered buildings with GPS coordinates
               </div>
             </div>
 
