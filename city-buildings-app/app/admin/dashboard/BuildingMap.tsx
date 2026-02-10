@@ -5,17 +5,24 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import type { LatLngExpression } from "leaflet";
 
-// Fix default marker icon
+// -----------------------------
+// Fix default Leaflet marker icon
+// -----------------------------
 const icon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
 
+// -----------------------------
+// Types
+// -----------------------------
 type MapPoint = {
   id: string;
   building_name: string;
@@ -34,6 +41,9 @@ type Props = {
   cityNameById: Map<string, string>;
 };
 
+// -----------------------------
+// Component
+// -----------------------------
 export default function BuildingMap({
   points,
   fallbackCenter,
@@ -55,21 +65,40 @@ export default function BuildingMap({
       {points.map((p) => (
         <Marker
           key={p.id}
-          position={[p.latitude, p.longitude] as LatLngExpression}
+          position={[p.latitude, p.longitude]}
           icon={icon}
         >
           <Popup>
             <div style={{ minWidth: 200 }}>
-              <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 4 }}>
+              <div
+                style={{
+                  fontWeight: 900,
+                  fontSize: 14,
+                  marginBottom: 4,
+                }}
+              >
                 {p.building_name}
               </div>
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>
+
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#6b7280",
+                  marginBottom: 4,
+                }}
+              >
                 {p.street_address}
               </div>
 
               {cityNameById.size > 0 && (
-                <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>
-                  {cityNameById.get(p.city_id) || "Unknown City"}
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "#6b7280",
+                    marginBottom: 4,
+                  }}
+                >
+                  {cityNameById.get(p.city_id) ?? "Unknown City"}
                 </div>
               )}
 
