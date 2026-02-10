@@ -24,16 +24,22 @@ export default function SignupPage() {
   useEffect(() => {
     async function fetchCities() {
       setLoadingCities(true);
+      setError(null);
 
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from("cities")
         .select("uuid, name")
         .order("name");
 
-      if (error) {
-        setError("Failed to load cities");
+      if (fetchError) {
+        console.error("Error fetching cities:", fetchError);
+        setError(`Failed to load cities: ${fetchError.message}`);
       } else {
+        console.log("Fetched cities:", data);
         setCities(data || []);
+        if (!data || data.length === 0) {
+          setError("No cities available. Please contact administrator.");
+        }
       }
 
       setLoadingCities(false);
@@ -107,6 +113,17 @@ export default function SignupPage() {
               <div style={{ padding: 12, color: "#9ca3af", fontSize: 14 }}>
                 Loading cities...
               </div>
+            ) : cities.length === 0 ? (
+              <div style={{ 
+                padding: 12, 
+                background: "#7f1d1d", 
+                borderRadius: 8,
+                border: "1px solid #991b1b",
+                fontSize: 13,
+                color: "#fca5a5"
+              }}>
+                ⚠️ No cities found. Cities need to be added to the database first.
+              </div>
             ) : (
               <select
                 value={selectedCityId}
@@ -174,14 +191,14 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            disabled={loading || loadingCities}
+            disabled={loading || loadingCities || cities.length === 0}
             style={{
               padding: "10px 12px",
               borderRadius: 10,
-              background: "#38bdf8",
+              background: cities.length === 0 ? "#6b7280" : "#38bdf8",
               border: "none",
               fontWeight: 900,
-              cursor: loading || loadingCities ? "not-allowed" : "pointer",
+              cursor: loading || loadingCities || cities.length === 0 ? "not-allowed" : "pointer",
               marginTop: 6,
             }}
           >
