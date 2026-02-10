@@ -2,7 +2,8 @@
 
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import L, { LatLngExpression } from "leaflet";
+import L from "leaflet";
+import type { LatLngExpression } from "leaflet";
 
 // Fix default marker icon
 const icon = L.icon({
