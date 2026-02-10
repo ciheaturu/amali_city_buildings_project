@@ -1,57 +1,106 @@
 ﻿"use client";
 
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+const icon = L.icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 });
 
-type BuildingPoint = {
+type MapPoint = {
   id: string;
   building_name: string;
   street_address: string;
+  city_id: string;
   latitude: number;
   longitude: number;
-  occupants: number | null;
-  condition?: string | null;
+  classification: string;
+  occupants?: number | null;
 };
 
-type BuildingMapProps = {
-  points: BuildingPoint[];
+type Props = {
+  points: MapPoint[];
   fallbackCenter: [number, number];
   fallbackZoom: number;
   cityNameById: Map<string, string>;
 };
 
-export default function BuildingMap({ points, fallbackCenter, fallbackZoom }: BuildingMapProps) {
+export default function BuildingMap({
+  points,
+  fallbackCenter,
+  fallbackZoom,
+  cityNameById,
+}: Props) {
   return (
+    // @ts-ignore
     <MapContainer
       center={fallbackCenter}
       zoom={fallbackZoom}
       style={{ height: "100%", width: "100%" }}
       scrollWheelZoom={true}
     >
+      {/* @ts-ignore */}
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution="&copy; OpenStreetMap contributors"
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {points.map((point) => (
-        <Marker key={point.id} position={[point.latitude, point.longitude]}>
+
+      {points.map((p) => (
+        // @ts-ignore
+        <Marker key={p.id} position={[p.latitude, p.longitude]} icon={icon}>
           <Popup>
             <div style={{ minWidth: 200 }}>
-              <div style={{ fontWeight: 800, marginBottom: 4 }}>{point.building_name}</div>
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>{point.street_address}</div>
-              {point.occupants !== null && (
-                <div style={{ fontSize: 12 }}>{point.occupants} occupants</div>
+              <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 4 }}>
+                {p.building_name}
+              </div>
+
+              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>
+                {p.street_address}
+              </div>
+
+              {cityNameById.size > 0 && (
+                <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>
+                  {cityNameById.get(p.city_id) || "Unknown City"}
+                </div>
               )}
-              {point.condition && (
-                <div style={{ fontSize: 12 }}>{point.condition}</div>
-              )}
+
+              <div style={{ fontSize: 12, marginTop: 6 }}>
+                <span
+                  style={{
+                    padding: "2px 8px",
+                    background: "#e0e7ff",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#3730a3",
+                  }}
+                >
+                  {p.classification}
+                </span>
+
+                {p.occupants && (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      padding: "2px 8px",
+                      background: "#dcfce7",
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "#14532d",
+                    }}
+                  >
+                    {p.occupants}
+                  </span>
+                )}
+              </div>
             </div>
           </Popup>
         </Marker>
