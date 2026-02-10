@@ -187,7 +187,7 @@ export default function AdminBuildingsPage() {
     setError(null);
 
     const enriched = filteredRows.map((r: any) => ({
-      city: cityNameById.get(r.city_id) ?? "",
+      city: cityNameById.get(r.city_id) || "",
       building_name: r.building_name,
       street_address: r.street_address,
       classification: r.classification,
@@ -262,3 +262,427 @@ export default function AdminBuildingsPage() {
     color: "white",
     fontWeight: 800,
     cursor: "pointer",
+  };
+
+  const btnRedSmall = (disabled?: boolean): React.CSSProperties => ({
+    padding: "8px 10px",
+    borderRadius: 10,
+    background: disabled ? "#7f1d1d" : "#dc2626",
+    border: "none",
+    color: "white",
+    fontWeight: 900,
+    cursor: disabled ? "not-allowed" : "pointer",
+  });
+
+  const btnRed: React.CSSProperties = {
+    padding: "8px 12px",
+    borderRadius: 8,
+    background: "#dc2626",
+    border: "none",
+    color: "white",
+    fontWeight: 700,
+    cursor: "pointer",
+    fontSize: 12,
+  };
+
+  return (
+    <main style={{ background: "#020617", minHeight: "100vh", color: "white" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: 24 }}>
+        <div
+          style={{
+            borderRadius: 16,
+            padding: 20,
+            background: "linear-gradient(135deg,#1d4ed8,#0ea5e9)",
+            marginBottom: 18,
+          }}
+        >
+          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>All buildings</h1>
+          <p style={{ opacity: 0.85, marginTop: 6 }}>
+            Manage buildings across all cities ({filteredRows.length.toLocaleString()} {hasActiveFilters ? `of ${rows.length.toLocaleString()}` : ""})
+          </p>
+
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 10,
+            }}
+          >
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => router.push("/admin")} style={btnDark()}>
+                Home
+              </button>
+
+              <button onClick={() => router.push("/admin/dashboard")} style={btnDark()}>
+                Dashboard
+              </button>
+
+              <button 
+                onClick={() => setShowFilters(!showFilters)} 
+                style={{ ...btnDark(), background: hasActiveFilters ? "#1e40af" : "#111827" }}
+              >
+                Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v !== "" && v !== null).length})`}
+              </button>
+
+              <button onClick={exportFiltered} disabled={filteredRows.length === 0} style={btnDark(filteredRows.length === 0)}>
+                Export CSV
+              </button>
+
+              <button onClick={() => router.push("/admin/buildings/new")} style={btnGreen}>
+                Add Building
+              </button>
+            </div>
+
+            <button onClick={signOut} style={btnDark()}>
+              Sign out
+            </button>
+          </div>
+        </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 18, marginBottom: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Filter Buildings</h2>
+              {hasActiveFilters && (
+                <button onClick={clearFilters} style={btnRed}>Clear All Filters</button>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  City
+                </label>
+                <select
+                  value={filters.cityId}
+                  onChange={(e) => setFilters({ ...filters, cityId: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All Cities</option>
+                  {cities.map((city) => (
+                    <option key={city.id} value={city.id}>{city.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Search
+                </label>
+                <input
+                  value={filters.searchTerm}
+                  onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+                  placeholder="Name or address..."
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Classification
+                </label>
+                <select
+                  value={filters.classification}
+                  onChange={(e) => setFilters({ ...filters, classification: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="public">Public</option>
+                  <option value="industrial">Industrial</option>
+                  <option value="mixed-use">Mixed-use</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Condition
+                </label>
+                <select
+                  value={filters.condition}
+                  onChange={(e) => setFilters({ ...filters, condition: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="Excellent">Excellent</option>
+                  <option value="Good">Good</option>
+                  <option value="Fair">Fair</option>
+                  <option value="Poor">Poor</option>
+                  <option value="Dilapidated">Dilapidated</option>
+                  <option value="Under Construction">Under Construction</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Ownership
+                </label>
+                <select
+                  value={filters.ownership}
+                  onChange={(e) => setFilters({ ...filters, ownership: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="Private">Private</option>
+                  <option value="Government">Government</option>
+                  <option value="Municipal">Municipal</option>
+                  <option value="Corporate">Corporate</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Compliance
+                </label>
+                <select
+                  value={filters.compliance}
+                  onChange={(e) => setFilters({ ...filters, compliance: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="Compliant">Compliant</option>
+                  <option value="Non-compliant">Non-compliant</option>
+                  <option value="Under Review">Under Review</option>
+                  <option value="Not Assessed">Not Assessed</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Electricity
+                </label>
+                <select
+                  value={filters.hasElectricity === null ? "" : String(filters.hasElectricity)}
+                  onChange={(e) => setFilters({ ...filters, hasElectricity: e.target.value === "" ? null : e.target.value === "true" })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="true">Has Electricity</option>
+                  <option value="false">No Electricity</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Water
+                </label>
+                <select
+                  value={filters.hasWater === null ? "" : String(filters.hasWater)}
+                  onChange={(e) => setFilters({ ...filters, hasWater: e.target.value === "" ? null : e.target.value === "true" })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="true">Has Water</option>
+                  <option value="false">No Water</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                  Sewerage
+                </label>
+                <select
+                  value={filters.hasSewerage === null ? "" : String(filters.hasSewerage)}
+                  onChange={(e) => setFilters({ ...filters, hasSewerage: e.target.value === "" ? null : e.target.value === "true" })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #1f2937",
+                    background: "#0b1220",
+                    color: "white",
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">All</option>
+                  <option value="true">Has Sewerage</option>
+                  <option value="false">No Sewerage</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12, fontSize: 13, color: "#9ca3af" }}>
+              Showing {filteredRows.length.toLocaleString()} of {rows.length.toLocaleString()} buildings
+            </div>
+          </div>
+        )}
+
+        {loading ? <p style={{ marginTop: 16 }}>Loading...</p> : null}
+        {error ? <p style={{ marginTop: 16, color: "#fca5a5", padding: 12, background: "#7f1d1d", borderRadius: 8 }}>{error}</p> : null}
+
+        <div style={{ marginTop: 16, overflowX: "auto", background: "#111827", borderRadius: 12, border: "1px solid #1f2937" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#0b1220" }}>
+                <th style={{ textAlign: "left", padding: 12, borderBottom: "2px solid #1f2937", fontWeight: 800 }}>
+                  City
+                </th>
+                <th style={{ textAlign: "left", padding: 12, borderBottom: "2px solid #1f2937", fontWeight: 800 }}>
+                  Building Name
+                </th>
+                <th style={{ textAlign: "left", padding: 12, borderBottom: "2px solid #1f2937", fontWeight: 800 }}>
+                  Address
+                </th>
+                <th style={{ textAlign: "left", padding: 12, borderBottom: "2px solid #1f2937", fontWeight: 800 }}>
+                  Classification
+                </th>
+                <th style={{ textAlign: "right", padding: 12, borderBottom: "2px solid #1f2937", fontWeight: 800 }}>
+                  Occupants
+                </th>
+                <th style={{ padding: 12, borderBottom: "2px solid #1f2937", textAlign: "right", fontWeight: 800 }}>
+                  Actions
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredRows.map((b) => (
+                <tr key={b.id} style={{ transition: "background 0.2s" }}>
+                  <td style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
+                    <span style={{ 
+                      padding: "4px 8px", 
+                      borderRadius: 6, 
+                      background: "#1e40af", 
+                      fontSize: 12,
+                      fontWeight: 700
+                    }}>
+                      {cityNameById.get(b.city_id) ?? b.city_id}
+                    </span>
+                  </td>
+                  <td style={{ padding: 12, borderBottom: "1px solid #1f2937", fontWeight: 600 }}>
+                    {b.building_name}
+                  </td>
+                  <td style={{ padding: 12, borderBottom: "1px solid #1f2937", color: "#9ca3af", fontSize: 14 }}>
+                    {b.street_address}
+                  </td>
+                  <td style={{ padding: 12, borderBottom: "1px solid #1f2937" }}>
+                    <span style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      background: "#065f46",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      textTransform: "capitalize"
+                    }}>
+                      {b.classification}
+                    </span>
+                  </td>
+                  <td style={{ padding: 12, borderBottom: "1px solid #1f2937", textAlign: "right", fontWeight: 600 }}>
+                    {b.occupants?.toLocaleString() ?? "-"}
+                  </td>
+                  <td style={{ padding: 12, borderBottom: "1px solid #1f2937", textAlign: "right" }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        onClick={() => router.push(`/admin/buildings/${b.id}/edit`)}
+                        style={btnBlueSmall}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => deleteBuilding(b.id, b.building_name)}
+                        disabled={deletingId === b.id}
+                        style={btnRedSmall(deletingId === b.id)}
+                      >
+                        {deletingId === b.id ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {!loading && filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#9ca3af" }}>
+                    {hasActiveFilters ? (
+                      <>
+                        No buildings match your filters. <button onClick={clearFilters} style={{ ...btnRed, marginLeft: 8 }}>Clear Filters</button>
+                      </>
+                    ) : (
+                      "No buildings yet."
+                    )}
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <button onClick={load} style={btnDark()}>
+            Refresh
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
