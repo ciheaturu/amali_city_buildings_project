@@ -829,7 +829,7 @@ export default function AdminDashboardPage() {
           </section>
 
           <section style={{ borderRadius: 14, background: "#111827", border: "1px solid #1f2937", padding: 14 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>🔧 Condition Overview</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Condition Overview</h2>
             <div style={{ height: 280, marginTop: 10 }}>
               {summary.conditionData.length > 0 ? (
                 <ResponsiveContainer>
