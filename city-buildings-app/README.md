@@ -84,8 +84,8 @@ This application enables cities across Africa to:
          ├──────────────────┐
          │                  │
     ┌────▼────┐      ┌──────▼──────┐
-    │  Next.js │      │   Admin     │
-    │   App    │      │   Portal    │
+    │  Next.js│      │   Admin     │
+    │   App   │      │   Portal    │
     └────┬────┘      └──────┬──────┘
          │                  │
          └──────────┬───────┘
