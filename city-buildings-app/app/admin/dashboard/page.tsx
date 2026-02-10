@@ -715,7 +715,7 @@ export default function AdminDashboardPage() {
             title="Average Building Age" 
             value={`${summary.avgAge.toFixed(0)} yrs`} 
             accent="#f97316" 
-            subtitle={`Based on ${summary.buildingsWithAge} buildings with age data`}
+            subtitle={`Based on ${summary.buildingsWithAge} buildings with building age data`}
           />
           <Card
             title="Infrastructure Score"

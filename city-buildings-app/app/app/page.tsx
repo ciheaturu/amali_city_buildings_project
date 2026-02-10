@@ -171,7 +171,7 @@ export default function CityHomePage() {
         >
           <div>
             <h1 style={{ fontSize: 36, fontWeight: 900, margin: 0, marginBottom: 8 }}>
-              Welcome back, {userName}! 👋
+              Welcome back, {userName}! 
             </h1>
             <p style={{ opacity: 0.9, margin: 0, fontSize: 18 }}>
               {cityName ? `Managing ${cityName}` : "City Building Management"}
@@ -190,7 +190,7 @@ export default function CityHomePage() {
               cursor: "pointer",
             }}
           >
-            🚪 Sign Out
+            Sign Out
           </button>
         </div>
 
@@ -206,25 +206,21 @@ export default function CityHomePage() {
           <StatCard
             title="Total Buildings"
             value={stats.totalBuildings.toString()}
-            icon="🏢"
             color="#38bdf8"
           />
           <StatCard
             title="Total Occupants"
             value={stats.totalOccupants.toLocaleString()}
-            icon="👥"
             color="#22c55e"
           />
           <StatCard
-            title="Avg Building Age"
+            title="Average Building Age"
             value={`${stats.avgAge} yrs`}
-            icon="📅"
             color="#f97316"
           />
           <StatCard
             title="Infrastructure Score"
             value={`${stats.infrastructureScore}%`}
-            icon="⚡"
             color={stats.infrastructureScore > 70 ? "#22c55e" : stats.infrastructureScore > 40 ? "#f97316" : "#e11d48"}
           />
         </div>
@@ -240,7 +236,7 @@ export default function CityHomePage() {
           }}
         >
           <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, marginBottom: 16 }}>
-            🚀 Quick Actions
+            Quick Actions
           </h2>
 
           <div
@@ -271,7 +267,7 @@ export default function CityHomePage() {
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}>➕</div>
+              <div style={{ fontSize: 24, marginBottom: 8 }}></div>
               <div style={{ fontSize: 16, fontWeight: 900 }}>Add New Building</div>
               <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
                 Capture a new building record
@@ -299,7 +295,7 @@ export default function CityHomePage() {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}>📋</div>
+              <div style={{ fontSize: 24, marginBottom: 8 }}></div>
               <div style={{ fontSize: 16, fontWeight: 900 }}>View All Buildings</div>
               <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
                 Browse and manage records
@@ -327,7 +323,7 @@ export default function CityHomePage() {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
+              <div style={{ fontSize: 24, marginBottom: 8 }}></div>
               <div style={{ fontSize: 16, fontWeight: 900 }}>Analytics Dashboard</div>
               <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
                 View charts and insights
@@ -346,7 +342,7 @@ export default function CityHomePage() {
           }}
         >
           <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, marginBottom: 16 }}>
-            ✨ Platform Features
+            Platform Features
           </h2>
 
           <div style={{ display: "grid", gap: 16 }}>
@@ -363,7 +359,7 @@ export default function CityHomePage() {
                   borderRadius: 10,
                 }}
               >
-                🗺️
+        
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
@@ -388,7 +384,7 @@ export default function CityHomePage() {
                   borderRadius: 10,
                 }}
               >
-                📈
+          
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
@@ -413,7 +409,7 @@ export default function CityHomePage() {
                   borderRadius: 10,
                 }}
               >
-                💾
+             
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
@@ -438,7 +434,7 @@ export default function CityHomePage() {
                   borderRadius: 10,
                 }}
               >
-                🔧
+            
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>

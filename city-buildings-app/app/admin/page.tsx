@@ -181,7 +181,7 @@ export default function AdminHomePage() {
               cursor: "pointer",
             }}
           >
-            🚪 Sign Out
+            Sign Out
           </button>
         </div>
 
@@ -237,7 +237,7 @@ export default function AdminHomePage() {
           }}
         >
           <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, marginBottom: 16 }}>
-            🚀 Quick Actions
+            Quick Actions
           </h2>
 
           <div
@@ -268,7 +268,7 @@ export default function AdminHomePage() {
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}>➕</div>
+              <div style={{ fontSize: 24, marginBottom: 8 }}></div>
               <div style={{ fontSize: 16, fontWeight: 900 }}>Add New Building</div>
               <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
                 Create building for any city
@@ -296,7 +296,7 @@ export default function AdminHomePage() {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}>🏢</div>
+              <div style={{ fontSize: 24, marginBottom: 8 }}></div>
               <div style={{ fontSize: 16, fontWeight: 900 }}>Manage Buildings</div>
               <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
                 View, edit, and export all buildings
@@ -324,7 +324,7 @@ export default function AdminHomePage() {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
+              <div style={{ fontSize: 24, marginBottom: 8 }}></div>
               <div style={{ fontSize: 16, fontWeight: 900 }}>Analytics Dashboard</div>
               <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
                 Cross-city insights and charts
