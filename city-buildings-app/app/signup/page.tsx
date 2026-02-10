@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type City = {
-  uuid: string;
+  id: string;
   name: string;
 };
 
@@ -28,7 +28,7 @@ export default function SignupPage() {
 
       const { data, error: fetchError } = await supabase
         .from("cities")
-        .select("uuid, name")
+        .select("id, name")
         .order("name");
 
       if (fetchError) {
@@ -141,7 +141,7 @@ export default function SignupPage() {
               >
                 <option value="">-- Choose a city --</option>
                 {cities.map((city) => (
-                  <option key={city.uuid} value={city.uuid}>
+                  <option key={city.id} value={city.id}>
                     {city.name}
                   </option>
                 ))}
