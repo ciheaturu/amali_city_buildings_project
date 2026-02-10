@@ -15,6 +15,25 @@ type Building = {
   occupants: number | null;
   latitude: number | null;
   longitude: number | null;
+  condition?: string | null;
+  year_built?: number | null;
+  ownership_type?: string | null;
+  compliance_status?: string | null;
+  has_electricity?: boolean;
+  has_water?: boolean;
+  has_sewerage?: boolean;
+};
+
+type Filters = {
+  cityId: string;
+  classification: string;
+  condition: string;
+  ownership: string;
+  compliance: string;
+  searchTerm: string;
+  hasElectricity: boolean | null;
+  hasWater: boolean | null;
+  hasSewerage: boolean | null;
 };
 
 function toCsv(rows: any[]) {
@@ -52,12 +71,64 @@ export default function AdminBuildingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const [filters, setFilters] = useState<Filters>({
+    cityId: "",
+    classification: "",
+    condition: "",
+    ownership: "",
+    compliance: "",
+    searchTerm: "",
+    hasElectricity: null,
+    hasWater: null,
+    hasSewerage: null,
+  });
 
   const cityNameById = useMemo(() => {
     const m = new Map<string, string>();
     cities.forEach((c) => m.set(c.id, c.name));
     return m;
   }, [cities]);
+
+  const filteredRows = useMemo(() => {
+    return rows.filter((b) => {
+      if (filters.cityId && b.city_id !== filters.cityId) return false;
+      if (filters.classification && b.classification !== filters.classification) return false;
+      if (filters.condition && b.condition !== filters.condition) return false;
+      if (filters.ownership && b.ownership_type !== filters.ownership) return false;
+      if (filters.compliance && b.compliance_status !== filters.compliance) return false;
+
+      if (filters.hasElectricity !== null && b.has_electricity !== filters.hasElectricity) return false;
+      if (filters.hasWater !== null && b.has_water !== filters.hasWater) return false;
+      if (filters.hasSewerage !== null && b.has_sewerage !== filters.hasSewerage) return false;
+
+      if (filters.searchTerm) {
+        const term = filters.searchTerm.toLowerCase();
+        const nameMatch = b.building_name?.toLowerCase().includes(term);
+        const addressMatch = b.street_address?.toLowerCase().includes(term);
+        if (!nameMatch && !addressMatch) return false;
+      }
+
+      return true;
+    });
+  }, [rows, filters]);
+
+  const hasActiveFilters = Object.values(filters).some((v) => v !== "" && v !== null);
+
+  function clearFilters() {
+    setFilters({
+      cityId: "",
+      classification: "",
+      condition: "",
+      ownership: "",
+      compliance: "",
+      searchTerm: "",
+      hasElectricity: null,
+      hasWater: null,
+      hasSewerage: null,
+    });
+  }
 
   async function load() {
     setLoading(true);
@@ -95,9 +166,7 @@ export default function AdminBuildingsPage() {
 
     const { data, error } = await supabase
       .from("buildings")
-      .select(
-        "id, city_id, building_name, street_address, classification, occupants, latitude, longitude"
-      )
+      .select("*")
       .order("created_at", { ascending: false });
 
     setLoading(false);
@@ -114,32 +183,28 @@ export default function AdminBuildingsPage() {
     load();
   }, []);
 
-  async function exportAll() {
+  async function exportFiltered() {
     setError(null);
 
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      router.replace("/login");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("buildings")
-      .select(
-        "id, city_id, building_name, street_address, latitude, longitude, classification, occupants, photo_url, created_at, updated_at"
-      );
-
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    const enriched = (data ?? []).map((r: any) => ({
-      ...r,
-      city_name: cityNameById.get(r.city_id) ?? "",
+    const enriched = filteredRows.map((r: any) => ({
+      city: cityNameById.get(r.city_id) ?? "",
+      building_name: r.building_name,
+      street_address: r.street_address,
+      classification: r.classification,
+      condition: r.condition ?? "",
+      year_built: r.year_built ?? "",
+      occupants: r.occupants ?? "",
+      ownership: r.ownership_type ?? "",
+      compliance: r.compliance_status ?? "",
+      electricity: r.has_electricity ? "Yes" : "No",
+      water: r.has_water ? "Yes" : "No",
+      sewerage: r.has_sewerage ? "Yes" : "No",
+      latitude: r.latitude ?? "",
+      longitude: r.longitude ?? "",
     }));
 
-    downloadCsv("admin_buildings_all.csv", toCsv(enriched));
+    const filename = `admin_buildings_${hasActiveFilters ? "filtered_" : ""}${new Date().toISOString().split("T")[0]}.csv`;
+    downloadCsv(filename, toCsv(enriched));
   }
 
   async function signOut() {
@@ -197,143 +262,3 @@ export default function AdminBuildingsPage() {
     color: "white",
     fontWeight: 800,
     cursor: "pointer",
-  };
-
-  const btnRedSmall = (disabled?: boolean): React.CSSProperties => ({
-    padding: "8px 10px",
-    borderRadius: 10,
-    background: disabled ? "#7f1d1d" : "#dc2626",
-    border: "none",
-    color: "white",
-    fontWeight: 900,
-    cursor: disabled ? "not-allowed" : "pointer",
-  });
-
-  return (
-    <main style={{ background: "#020617", minHeight: "100vh", color: "white" }}>
-      <div style={{ maxWidth: 1180, margin: "0 auto", padding: 24 }}>
-        <div
-          style={{
-            borderRadius: 16,
-            padding: 20,
-            background: "linear-gradient(135deg,#1d4ed8,#0ea5e9)",
-          }}
-        >
-          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>All buildings</h1>
-          <p style={{ opacity: 0.85, marginTop: 6 }}>
-            Add, edit, and export buildings across all cities
-          </p>
-
-          <div
-            style={{
-              marginTop: 12,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 10,
-            }}
-          >
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => router.push("/admin")} style={btnDark()}>
-                Home
-              </button>
-
-              <button onClick={() => router.push("/admin/dashboard")} style={btnDark()}>
-                Dashboard
-              </button>
-
-              <button onClick={exportAll} disabled={rows.length === 0} style={btnDark(rows.length === 0)}>
-                Export CSV
-              </button>
-
-              <button onClick={() => router.push("/admin/buildings/new")} style={btnGreen}>
-                Add new building
-              </button>
-            </div>
-
-            <button onClick={signOut} style={btnDark()}>
-              Sign out
-            </button>
-          </div>
-        </div>
-
-        {loading ? <p style={{ marginTop: 16 }}>Loading...</p> : null}
-        {error ? <p style={{ marginTop: 16, color: "#fca5a5" }}>{error}</p> : null}
-
-        <div style={{ marginTop: 16, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #1f2937" }}>
-                  City
-                </th>
-                <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #1f2937" }}>
-                  Name
-                </th>
-                <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #1f2937" }}>
-                  Address
-                </th>
-                <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #1f2937" }}>
-                  Class
-                </th>
-                <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #1f2937" }}>
-                  Occupants
-                </th>
-                <th style={{ padding: 10, borderBottom: "1px solid #1f2937" }} />
-              </tr>
-            </thead>
-
-            <tbody>
-              {rows.map((b) => (
-                <tr key={b.id}>
-                  <td style={{ padding: 10, borderBottom: "1px solid #111827" }}>
-                    {cityNameById.get(b.city_id) ?? b.city_id}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #111827" }}>{b.building_name}</td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #111827" }}>{b.street_address}</td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #111827" }}>{b.classification}</td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #111827", textAlign: "right" }}>
-                    {b.occupants ?? ""}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #111827", textAlign: "right" }}>
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        onClick={() => router.push(`/admin/buildings/${b.id}/edit`)}
-                        style={btnBlueSmall}
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        onClick={() => deleteBuilding(b.id, b.building_name)}
-                        disabled={deletingId === b.id}
-                        style={btnRedSmall(deletingId === b.id)}
-                      >
-                        {deletingId === b.id ? "Deleting..." : "Delete"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {!loading && rows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ padding: 12 }}>
-                    No buildings yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={{ marginTop: 14 }}>
-          <button onClick={load} style={btnDark()}>
-            Refresh
-          </button>
-        </div>
-      </div>
-    </main>
-  );
-}
