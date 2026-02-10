@@ -405,21 +405,21 @@ export default function DashboardPage() {
           >
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button onClick={() => router.push("/app")} style={styles.navBtn}>
-                🏠 Home
+                Home
               </button>
               <button onClick={() => router.push("/app/buildings")} style={styles.navBtn}>
-                🏢 Buildings
+                Buildings
               </button>
               <button onClick={() => router.push("/app/buildings/new")} style={styles.btnGreen}>
-                ➕ Add Building
+                Add Building
               </button>
               <button onClick={handleExportCsv} style={styles.navBtn}>
-                📊 Export CSV
+                Export CSV
               </button>
             </div>
 
             <button onClick={handleSignOut} style={styles.btnRed}>
-              🚪 Sign Out
+              Sign Out
             </button>
           </nav>
         </header>
@@ -439,7 +439,7 @@ export default function DashboardPage() {
               gap: 12,
             }}
           >
-            <span style={{ fontSize: 20 }}>⚠️</span>
+            <span style={{ fontSize: 20 }}></span>
             <span style={{ flex: 1 }}>{error}</span>
             <button
               onClick={() => setError(null)}
@@ -519,7 +519,7 @@ export default function DashboardPage() {
                 color: "#f3f4f6",
               }}
             >
-              📊 Buildings by Classification
+              Buildings by Classification
             </h2>
 
             <div style={{ height: 340 }}>
@@ -584,7 +584,7 @@ export default function DashboardPage() {
           >
             <div style={{ padding: 16, borderBottom: "1px solid #1f2937" }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#f3f4f6" }}>
-                🗺️ Building Locations
+                Building Locations
               </h2>
               <p style={{ margin: 0, marginTop: 4, fontSize: 14, color: "#9ca3af" }}>
                 {analytics.points.length} buildings mapped
