@@ -11,7 +11,7 @@ type QuickStats = {
   infrastructureScore: number;
 };
 
-function StatCard({ title, value, icon, color }: { title: string; value: string; icon: string; color: string }) {
+function StatCard({ title, value, color }: { title: string; value: string; color: string }) {
   return (
     <div
       style={{
@@ -22,9 +22,10 @@ function StatCard({ title, value, icon, color }: { title: string; value: string;
         boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
       }}
     >
-      <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 28, fontWeight: 900, color, marginBottom: 4 }}>{value}</div>
-      <div style={{ fontSize: 13, color: "#9ca3af", fontWeight: 600 }}>{title}</div>
+      <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", marginBottom: 8 }}>
+        {title}
+      </div>
+      <div style={{ fontSize: 32, fontWeight: 900, color }}>{value}</div>
     </div>
   );
 }
@@ -171,9 +172,9 @@ export default function CityHomePage() {
         >
           <div>
             <h1 style={{ fontSize: 36, fontWeight: 900, margin: 0, marginBottom: 8 }}>
-              Welcome back, {userName}! 
+              Welcome back, {userName}!
             </h1>
-            <p style={{ opacity: 0.9, margin: 0, fontSize: 18 }}>
+            <p style={{ opacity: 0.9, margin: 0, fontSize: 16 }}>
               {cityName ? `Managing ${cityName}` : "City Building Management"}
             </p>
           </div>
@@ -181,13 +182,14 @@ export default function CityHomePage() {
           <button
             onClick={handleSignOut}
             style={{
-              padding: "10px 16px",
+              padding: "12px 20px",
               borderRadius: 10,
               background: "rgba(255,255,255,0.2)",
               border: "1px solid rgba(255,255,255,0.3)",
               color: "white",
               fontWeight: 800,
               cursor: "pointer",
+              fontSize: 14,
             }}
           >
             Sign Out
@@ -267,9 +269,8 @@ export default function CityHomePage() {
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}></div>
-              <div style={{ fontSize: 16, fontWeight: 900 }}>Add New Building</div>
-              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 6 }}>Add New Building</div>
+              <div style={{ fontSize: 13, opacity: 0.8 }}>
                 Capture a new building record
               </div>
             </div>
@@ -295,9 +296,8 @@ export default function CityHomePage() {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}></div>
-              <div style={{ fontSize: 16, fontWeight: 900 }}>View All Buildings</div>
-              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 6 }}>View All Buildings</div>
+              <div style={{ fontSize: 13, opacity: 0.7 }}>
                 Browse and manage records
               </div>
             </div>
@@ -323,16 +323,15 @@ export default function CityHomePage() {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}></div>
-              <div style={{ fontSize: 16, fontWeight: 900 }}>Analytics Dashboard</div>
-              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 6 }}>Analytics Dashboard</div>
+              <div style={{ fontSize: 13, opacity: 0.7 }}>
                 View charts and insights
               </div>
             </div>
           </div>
         </div>
 
-        {/* Features Overview */}
+        {/* Platform Features */}
         <div
           style={{
             borderRadius: 16,
@@ -341,109 +340,45 @@ export default function CityHomePage() {
             padding: 24,
           }}
         >
-          <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, marginBottom: 16 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, marginBottom: 20 }}>
             Platform Features
           </h2>
 
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
-              <div
-                style={{
-                  fontSize: 28,
-                  width: 48,
-                  height: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#1f2937",
-                  borderRadius: 10,
-                }}
-              >
-        
-              </div>
-              <div style={{ flex: 1 }}>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
-                  Interactive Mapping
-                </h3>
-                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
-                  Visualize all your buildings on an interactive map with geolocation support
-                </p>
-              </div>
+          <div style={{ display: "grid", gap: 20 }}>
+            <div style={{ paddingLeft: 16, borderLeft: "3px solid #38bdf8" }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 6 }}>
+                Interactive Mapping
+              </h3>
+              <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                Visualize all your buildings on an interactive map with geolocation support
+              </p>
             </div>
 
-            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
-              <div
-                style={{
-                  fontSize: 28,
-                  width: 48,
-                  height: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#1f2937",
-                  borderRadius: 10,
-                }}
-              >
-          
-              </div>
-              <div style={{ flex: 1 }}>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
-                  Advanced Analytics
-                </h3>
-                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
-                  Track condition, compliance, utilities, and infrastructure health metrics
-                </p>
-              </div>
+            <div style={{ paddingLeft: 16, borderLeft: "3px solid #22c55e" }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 6 }}>
+                Advanced Analytics
+              </h3>
+              <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                Track condition, compliance, utilities, and infrastructure health metrics
+              </p>
             </div>
 
-            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
-              <div
-                style={{
-                  fontSize: 28,
-                  width: 48,
-                  height: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#1f2937",
-                  borderRadius: 10,
-                }}
-              >
-             
-              </div>
-              <div style={{ flex: 1 }}>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
-                  Data Export
-                </h3>
-                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
-                  Export your building data to CSV for external analysis and reporting
-                </p>
-              </div>
+            <div style={{ paddingLeft: 16, borderLeft: "3px solid #a78bfa" }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 6 }}>
+                Data Export
+              </h3>
+              <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                Export your building data to CSV for external analysis and reporting
+              </p>
             </div>
 
-            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
-              <div
-                style={{
-                  fontSize: 28,
-                  width: 48,
-                  height: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#1f2937",
-                  borderRadius: 10,
-                }}
-              >
-            
-              </div>
-              <div style={{ flex: 1 }}>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
-                  Comprehensive Data
-                </h3>
-                <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
-                  Track building condition, age, utilities, compliance, ownership, and more
-                </p>
-              </div>
+            <div style={{ paddingLeft: 16, borderLeft: "3px solid #f97316" }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, marginBottom: 6 }}>
+                Comprehensive Data
+              </h3>
+              <p style={{ margin: 0, fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>
+                Track building condition, age, utilities, compliance, ownership, and more
+              </p>
             </div>
           </div>
         </div>
