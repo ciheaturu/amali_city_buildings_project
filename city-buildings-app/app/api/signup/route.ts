@@ -23,14 +23,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // Verify city exists using UUID
+    // Verify city exists - CHANGED: uuid → id
     const { data: city, error: cityCheckErr } = await supabaseAdmin
       .from("cities")
-      .select("uuid")
-      .eq("uuid", cityId)
+      .select("id")           // CHANGED: "uuid" → "id"
+      .eq("id", cityId)       // CHANGED: "uuid" → "id"
       .single();
 
     if (cityCheckErr || !city) {
+      console.error("City check error:", cityCheckErr); // Added for debugging
       return NextResponse.json({ error: "Invalid city selected" }, { status: 400 });
     }
 
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
       });
 
     if (userErr || !createdUser.user) {
+      console.error("User creation error:", userErr); // Added for debugging
       return NextResponse.json(
         { error: userErr?.message ?? "Failed to create user" },
         { status: 400 }
@@ -51,19 +53,21 @@ export async function POST(req: Request) {
 
     const userId = createdUser.user.id;
 
-    // Create profile linked to selected city (UUID)
+    // Create profile linked to selected city
     const { error: profErr } = await supabaseAdmin.from("profiles").insert({
       user_id: userId,
-      city_id: cityId, // UUID
+      city_id: cityId,  // This is correct - it's the id value
       role: "city",
     });
 
     if (profErr) {
+      console.error("Profile creation error:", profErr); // Added for debugging
       return NextResponse.json({ error: profErr.message }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });
-  } catch {
+  } catch (err) {
+    console.error("Signup route error:", err); // Added for debugging
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }
