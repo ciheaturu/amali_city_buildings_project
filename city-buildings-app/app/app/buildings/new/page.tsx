@@ -773,7 +773,7 @@ export default function NewBuildingPage() {
           {/* Photo */}
           <div style={{ borderBottom: "1px solid #1f2937", paddingBottom: 12, marginTop: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#a78bfa" }}>
-              📸 Additional
+              Additional
             </h3>
           </div>
 
