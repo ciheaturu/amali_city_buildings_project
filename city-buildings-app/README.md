@@ -11,11 +11,7 @@ This application enables cities across Africa to:
 - Export data for external analysis and reporting
 - Compare performance across cities (admin view)
 
-**Live Application:** https://amali-city-buildings-project-5iie.vercel.app/
-
-**Admin Credentials:** admin@gmail.com / password
-
-**Test City:** geomaven@gmail.com / password
+**Live Application:** https://amali-city-buildings-project-vpr2.vercel.app/ 
 
 ## Features
 
@@ -738,7 +734,7 @@ This project is part of the AMALI Data Programme assessment and is intended for 
 
 ## Support
 
-For questions about this implementation, please refer to the technical write-up document or contact the author through GitHub.
+For questions about this implementation, contact the author through GitHub.
 
 ---
 
